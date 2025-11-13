@@ -1,182 +1,120 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Recuerdos del Evento</title>
-
-  <!-- Fuente y estilos básicos -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --main-color: #2ecc71; /* Verde esmeralda (puedes cambiarlo) */
-    }
-
-    body {
-      font-family: 'Poppins', sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #f5f5f5;
-      color: #333;
-      text-align: center;
-    }
-
-    header {
-      background-color: var(--main-color);
-      color: white;
-      padding: 1.2rem;
-      font-size: 1.6rem;
-      font-weight: 600;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
-
-    .container {
-      max-width: 1000px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-    }
-
-    .upload-area {
-      background: white;
-      border: 2px dashed var(--main-color);
-      border-radius: 12px;
-      padding: 2rem;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-
-    .upload-area:hover {
-      background-color: #ecfdf5;
-    }
-
-    .upload-area input {
-      display: none;
-    }
-
-    .gallery {
-      margin-top: 2rem;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 1rem;
-    }
-
-    .gallery-item {
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      overflow: hidden;
-      transition: transform 0.2s;
-    }
-
-    .gallery-item:hover {
-      transform: scale(1.03);
-    }
-
-    .gallery-item img, .gallery-item video {
-      width: 100%;
-      height: 220px;
-      object-fit: cover;
-      display: block;
-    }
-
-    footer {
-      margin-top: 3rem;
-      color: #888;
-      font-size: 0.9rem;
-      padding: 1rem;
-    }
-
-    .loading {
-      display: none;
-      margin-top: 1rem;
-      color: var(--main-color);
-      font-weight: bold;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Álbum de Recuerdos</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root { --main-color: #2ecc71; }
+body { font-family: 'Poppins', sans-serif; margin:0; padding:0; background:#f5f5f5; color:#333; text-align:center; }
+header { background:var(--main-color); color:white; padding:1.2rem; font-size:1.6rem; font-weight:600; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
+.container { max-width:1000px; margin:2rem auto; padding:0 1rem; }
+.upload-area { background:white; border:2px dashed var(--main-color); border-radius:12px; padding:2rem; cursor:pointer; transition:0.3s; }
+.upload-area:hover { background-color:#ecfdf5; }
+.upload-area input { display:none; }
+.gallery { margin-top:2rem; display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem; }
+.gallery-item { background:white; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); overflow:hidden; transition: transform 0.2s; }
+.gallery-item:hover { transform:scale(1.03); }
+.gallery-item img, .gallery-item video { width:100%; height:220px; object-fit:cover; display:block; }
+.loading { display:none; margin-top:1rem; color:var(--main-color); font-weight:bold; }
+</style>
 </head>
 <body>
-  <header>📸 Álbum de Recuerdos</header>
+<header>📸 Álbum de Recuerdos</header>
+<div class="container">
+  <label class="upload-area" id="uploadArea">
+    <p>Haz clic aquí para subir tus fotos o videos 📤</p>
+    <input type="file" id="fileInput" accept="image/*,video/*">
+  </label>
+  <div class="loading" id="loading">Subiendo archivo, por favor espera...</div>
+  <div class="gallery" id="gallery"></div>
+</div>
+<footer>Hecho con 💚 para tus mejores recuerdos</footer>
 
-  <div class="container">
-    <label class="upload-area" id="uploadArea">
-      <p>Haz clic aquí para subir tus fotos o videos 📤</p>
-      <input type="file" id="fileInput" accept="image/*,video/*">
-    </label>
+<!-- Librerías de compresión -->
+<script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.0/dist/browser-image-compression.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.5/dist/ffmpeg.min.js"></script>
 
-    <div class="loading" id="loading">Subiendo archivo, por favor espera...</div>
+<script>
+  // ==========================
+  // CONFIGURA ESTO
+  const CLOUD_NAME = 'dvyf7rti4';
+  const UPLOAD_PRESET = 'evory-moments'; // Preset no firmado para subir desde navegador
+  const MAX_IMAGE_MB = 10;
+  const MAX_VIDEO_MB = 100;
+  const gallery = document.getElementById("gallery");
+  const loadingText = document.getElementById("loading");
+  // ==========================
 
-    <div class="gallery" id="gallery"></div>
-  </div>
+  const ffmpeg = FFmpeg.createFFmpeg({ log: false });
 
-  <footer>Hecho con 💚 para tus mejores recuerdos</footer>
+  async function compressImage(file) {
+    const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/jpeg' };
+    return await imageCompression(file, options);
+  }
 
-  <script>
-    const scriptURL = "https://script.google.com/macros/s/AKfycbzF7t6DuID8h_C5MLfZtw8lImC5DQm5c6hyQpfTHeIgxUVtayrOzOIHS3584IVzJMZGvg/exec";
-    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ2OKzdNbfLoqWpJQet5zoExBcOfF7nKaIXh4JYK6KplbYSIUJFe6J0hR8trAYq1tGeSFFAVwDDRKrF/pub?output=csv";
+  async function compressVideo(file) {
+    if (!ffmpeg.isLoaded()) await ffmpeg.load();
+    ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
+    await ffmpeg.run('-i','input.mp4','-b:v','2M','output.mp4');
+    const data = ffmpeg.FS('readFile','output.mp4');
+    return new Blob([data.buffer], { type: 'video/mp4' });
+  }
 
-    const fileInput = document.getElementById("fileInput");
-    const uploadArea = document.getElementById("uploadArea");
-    const loadingText = document.getElementById("loading");
-    const gallery = document.getElementById("gallery");
-
-    // ✅ Mostrar imágenes y videos desde Google Sheet
-    async function loadGallery() {
-      gallery.innerHTML = "<p>Cargando recuerdos...</p>";
-      const res = await fetch(sheetURL);
-      const text = await res.text();
-      const rows = text.split("\n").slice(1);
-
-      gallery.innerHTML = "";
-      rows.forEach(row => {
-        const url = row.trim();
-        if (!url) return;
-        const div = document.createElement("div");
-        div.className = "gallery-item";
-
-        if (url.includes(".mp4") || url.includes("video")) {
-          div.innerHTML = `<video src="${url}" controls></video>`;
-        } else {
-          div.innerHTML = `<img src="${url}" alt="Recuerdo">`;
-        }
-
-        gallery.appendChild(div);
-      });
-    }
-
-    // ✅ Subir archivo a Google Apps Script
-    fileInput.addEventListener("change", async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      loadingText.style.display = "block";
-
-      const formData = new FormData();
-      formData.append("file", file);
-
-      try {
-        const res = await fetch(scriptURL, {
-          method: "POST",
-          body: formData
-        });
-
-        const data = await res.json();
-
-        if (data.status === "success") {
-          alert("Archivo subido con éxito ✅");
-          loadGallery();
-        } else {
-          alert("Error: " + data.message);
-        }
-      } catch (err) {
-        alert("Ocurrió un error al subir: " + err.message);
-      } finally {
-        loadingText.style.display = "none";
-        fileInput.value = "";
-      }
+  async function uploadToCloudinary(file, type) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', UPLOAD_PRESET);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${type}/upload`, {
+      method: 'POST',
+      body: formData
     });
+    return await res.json();
+  }
 
-    // Cargar galería al abrir la página
-    loadGallery();
-  </script>
+  function renderGalleryItem(url, type) {
+    const div = document.createElement("div");
+    div.className = "gallery-item";
+    if(type === 'video') {
+      div.innerHTML = `<video src="${url}" controls preload="none" loading="lazy"></video>`;
+    } else {
+      div.innerHTML = `<img src="${url}" alt="Recuerdo" loading="lazy">`;
+    }
+    gallery.appendChild(div);
+  }
+
+  async function handleFile(file) {
+    loadingText.style.display = 'block';
+    try {
+      let processedFile = file;
+
+      if(file.type.startsWith('image/')) {
+        processedFile = await compressImage(file);
+        const result = await uploadToCloudinary(processedFile, 'image');
+        renderGalleryItem(result.secure_url, 'image');
+
+      } else if(file.type.startsWith('video/')) {
+        processedFile = await compressVideo(file);
+        const result = await uploadToCloudinary(processedFile, 'video');
+        renderGalleryItem(result.secure_url, 'video');
+
+      } else {
+        alert("Tipo de archivo no soportado");
+      }
+    } catch(e) {
+      console.error(e);
+      alert("Error al subir el archivo: " + e.message);
+    } finally {
+      loadingText.style.display = 'none';
+      document.getElementById("fileInput").value = '';
+    }
+  }
+
+  document.getElementById("fileInput").addEventListener('change', e => {
+    const file = e.target.files[0];
+    if(file) handleFile(file);
+  });
+</script>
 </body>
 </html>
