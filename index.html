@@ -1,130 +1,182 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Álbum de Recuerdos</title>
-<style>
-:root {
-  --main-color: #2ecc71;
-}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recuerdos del Evento</title>
 
-body {
-  font-family: 'Poppins', sans-serif;
-  background-color: #f8f8f8;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+  <!-- Fuente y estilos básicos -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --main-color: #2ecc71; /* Verde esmeralda (puedes cambiarlo) */
+    }
 
-h1 {
-  color: var(--main-color);
-  margin: 20px;
-  font-weight: 600;
-}
+    body {
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+      color: #333;
+      text-align: center;
+    }
 
-#gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-  width: 95%;
-  max-width: 900px;
-}
+    header {
+      background-color: var(--main-color);
+      color: white;
+      padding: 1.2rem;
+      font-size: 1.6rem;
+      font-weight: 600;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
 
-img, video {
-  width: 100%;
-  border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-}
+    .container {
+      max-width: 1000px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
 
-#uploadBtn {
-  background-color: var(--main-color);
-  color: white;
-  border: none;
-  padding: 12px 25px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
-  margin: 20px 0;
-}
-</style>
+    .upload-area {
+      background: white;
+      border: 2px dashed var(--main-color);
+      border-radius: 12px;
+      padding: 2rem;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .upload-area:hover {
+      background-color: #ecfdf5;
+    }
+
+    .upload-area input {
+      display: none;
+    }
+
+    .gallery {
+      margin-top: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .gallery-item {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      overflow: hidden;
+      transition: transform 0.2s;
+    }
+
+    .gallery-item:hover {
+      transform: scale(1.03);
+    }
+
+    .gallery-item img, .gallery-item video {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      display: block;
+    }
+
+    footer {
+      margin-top: 3rem;
+      color: #888;
+      font-size: 0.9rem;
+      padding: 1rem;
+    }
+
+    .loading {
+      display: none;
+      margin-top: 1rem;
+      color: var(--main-color);
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <h1>Álbum de Recuerdos 💚</h1>
+  <header>📸 Álbum de Recuerdos</header>
 
-  <input type="file" id="fileInput" accept="image/*,video/*" hidden>
-  <button id="uploadBtn">➕ Agregar Recuerdo</button>
+  <div class="container">
+    <label class="upload-area" id="uploadArea">
+      <p>Haz clic aquí para subir tus fotos o videos 📤</p>
+      <input type="file" id="fileInput" accept="image/*,video/*">
+    </label>
 
-  <div id="gallery"></div>
+    <div class="loading" id="loading">Subiendo archivo, por favor espera...</div>
+
+    <div class="gallery" id="gallery"></div>
+  </div>
+
+  <footer>Hecho con 💚 para tus mejores recuerdos</footer>
 
   <script>
-  const scriptURL = 'https://script.google.com/macros/s/AKfycbwbl3sF6hZh68C-MugCNIy2-Sv95LAPAfCyGIAzkI7pJUPpaHQKnVIGJMh-XoZZBdEA-A/exec'; // tu URL del App Script publicado
-  const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ2OKzdNbfLoqWpJQet5zoExBcOfF7nKaIXh4JYK6KplbYSIUJFe6J0hR8trAYq1tGeSFFAVwDDRKrF/pub?output=csv';
+    const scriptURL = "https://script.google.com/macros/s/AKfycbzF7t6DuID8h_C5MLfZtw8lImC5DQm5c6hyQpfTHeIgxUVtayrOzOIHS3584IVzJMZGvg/exec";
+    const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ2OKzdNbfLoqWpJQet5zoExBcOfF7nKaIXh4JYK6KplbYSIUJFe6J0hR8trAYq1tGeSFFAVwDDRKrF/pub?output=csv";
 
-  const fileInput = document.getElementById('fileInput');
-  const uploadBtn = document.getElementById('uploadBtn');
-  const gallery = document.getElementById('gallery');
+    const fileInput = document.getElementById("fileInput");
+    const uploadArea = document.getElementById("uploadArea");
+    const loadingText = document.getElementById("loading");
+    const gallery = document.getElementById("gallery");
 
-  uploadBtn.addEventListener('click', () => fileInput.click());
+    // ✅ Mostrar imágenes y videos desde Google Sheet
+    async function loadGallery() {
+      gallery.innerHTML = "<p>Cargando recuerdos...</p>";
+      const res = await fetch(sheetURL);
+      const text = await res.text();
+      const rows = text.split("\n").slice(1);
 
-  fileInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+      gallery.innerHTML = "";
+      rows.forEach(row => {
+        const url = row.trim();
+        if (!url) return;
+        const div = document.createElement("div");
+        div.className = "gallery-item";
 
-    uploadBtn.disabled = true;
-    uploadBtn.textContent = 'Subiendo...';
+        if (url.includes(".mp4") || url.includes("video")) {
+          div.innerHTML = `<video src="${url}" controls></video>`;
+        } else {
+          div.innerHTML = `<img src="${url}" alt="Recuerdo">`;
+        }
 
-    // Convertir a base64 para enviarlo
-    const base64 = await toBase64(file);
-
-    const res = await fetch(scriptURL, {
-      method: 'POST',
-      headers: { 'Content-Type': file.type },
-      body: base64
-    });
-    const data = await res.json();
-
-    uploadBtn.disabled = false;
-    uploadBtn.textContent = '➕ Agregar Recuerdo';
-
-    if (data.status === 'success') {
-      showFile(data.url);
-    } else {
-      alert('Error: ' + data.message);
+        gallery.appendChild(div);
+      });
     }
-  });
 
-  async function loadGallery() {
-    try {
-      const response = await fetch(sheetURL);
-      const text = await response.text();
-      const urls = text.match(/https?:\/\/[^\s"]+/g);
-      if (!urls) return;
-      urls.forEach(url => showFile(url));
-    } catch (err) {
-      console.error('Error cargando galería', err);
-    }
-  }
+    // ✅ Subir archivo a Google Apps Script
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-  function showFile(url) {
-    const lower = url.toLowerCase();
-    const element = lower.endsWith('.mp4') ? document.createElement('video') : document.createElement('img');
-    element.src = url;
-    if (element.tagName === 'VIDEO') element.controls = true;
-    gallery.prepend(element);
-  }
+      loadingText.style.display = "block";
 
-  function toBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch(scriptURL, {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (data.status === "success") {
+          alert("Archivo subido con éxito ✅");
+          loadGallery();
+        } else {
+          alert("Error: " + data.message);
+        }
+      } catch (err) {
+        alert("Ocurrió un error al subir: " + err.message);
+      } finally {
+        loadingText.style.display = "none";
+        fileInput.value = "";
+      }
     });
-  }
 
-  loadGallery();
+    // Cargar galería al abrir la página
+    loadGallery();
   </script>
 </body>
 </html>
