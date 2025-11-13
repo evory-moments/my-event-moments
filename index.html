@@ -1,179 +1,36 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Álbum del Evento</title>
+function renderItem(r) {
+const div = document.createElement('div');
+div.className = 'gallery-item';
+  // usar secure_url preferiblemente
 
-<style>
-  body {
-    margin: 0;
-    background: #fafafa;
-    font-family: Arial, sans-serif;
-  }
+const url = r.secure_url || r.url || '';
+if (!url) return;
 
-  /* --- GRID DEL ALBUM --- */
-  #gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    grid-gap: 12px;
-    padding: 12px;
-  }
+if ((r.resource_type && r.resource_type.toLowerCase() === 'video') || url.match(/\.(mp4|mov|webm)$/i)) {
 
-  .gallery-item {
-    position: relative;
-    border-radius: 10px;
-    overflow: hidden;
-    background: #f0f0f0;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    cursor: pointer;
-  }
+    // Obtener cloud name y public_id
+    const cloudName = "dvyf7rti4";  // ← usa tu cloud name
+    const publicId = r.public_id;
 
-  .gallery-item img,
-  .gallery-item video {
-    width: 100%;
-    height: 180px;
-    object-fit: cover;
-    display: block;
-  }
+    // Generar thumbnail automático de Cloudinary
+    const poster = `https://res.cloudinary.com/${cloudName}/video/upload/so_auto,w_300,h_200,c_fill/${publicId}.jpg`;
 
-  /* --- FULLSCREEN LIGHTBOX --- */
-  #lightbox {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.85);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    backdrop-filter: blur(4px);
-  }
+const v = document.createElement('video');
+v.src = url;
+v.controls = true;
+v.preload = 'none';
+v.loading = 'lazy';
+    v.poster = poster;  // ← MINIATURA !!!
+v.style.height = '220px';
 
-  #lightbox-content {
-    max-width: 90%;
-    max-height: 90%;
-  }
-
-  #lightbox-content img,
-  #lightbox-content video {
-    max-width: 100%;
-    max-height: 100%;
-    border-radius: 12px;
-  }
-
-  #closeBtn {
-    position: absolute;
-    top: 20px;
-    right: 25px;
-    font-size: 40px;
-    color: white;
-    cursor: pointer;
-    font-weight: bold;
-  }
-</style>
-</head>
-
-<body>
-
-<!-- GALERÍA -->
-<div id="gallery"></div>
-
-<!-- LIGHTBOX / FULLSCREEN -->
-<div id="lightbox">
-  <span id="closeBtn">&times;</span>
-  <div id="lightbox-content"></div>
-</div>
-
-<script>
-  const gallery = document.getElementById('gallery');
-  const lightbox = document.getElementById('lightbox');
-  const lightboxContent = document.getElementById('lightbox-content');
-  const closeBtn = document.getElementById('closeBtn');
-
-  // -------------------------------
-  //     CARGAR DATOS DESDE APP SCRIPT
-  // -------------------------------
-
-  // Cambia este URL por TU App Script:
-  const API_URL = "https://script.google.com/macros/s/AKfycbxqrVrI1e31HKjiBRPi1wAalmv12TG1HtzFpVEAsqhRoaQ6vCNhV4ST1a9ocQnBd8Dh/exec?folder=moments&resource_type=all";
-
-  fetch(API_URL)
-    .then(r => r.json())
-    .then(data => {
-      if (data.resources) data.resources.forEach(renderItem);
-    })
-    .catch(err => console.error("Error cargando galería:", err));
+div.appendChild(v);
+} else {
+const img = document.createElement('img');
+@@ -78,6 +89,7 @@
+gallery.appendChild(div);
+}
 
 
-  // -------------------------------
-  //     RENDERIZAR CADA ITEM
-  // -------------------------------
-  function renderItem(r) {
-    const div = document.createElement('div');
-    div.className = 'gallery-item';
-
-    const url = r.secure_url || r.url || '';
-    if (!url) return;
-
-    const isVideo =
-      (r.resource_type && r.resource_type.toLowerCase() === 'video') ||
-      url.match(/\.(mp4|mov|webm)$/i);
-
-    if (isVideo) {
-      // Miniatura automática del video
-      const cloudName = "dvyf7rti4";  // CAMBIA ESTE!!!
-      const thumb = `https://res.cloudinary.com/${cloudName}/video/upload/so_auto,w_400,h_300,c_fill/${r.public_id}.jpg`;
-
-      const v = document.createElement('video');
-      v.src = url;
-      v.poster = thumb;
-      v.muted = true;
-      v.preload = 'none';
-
-      v.onclick = () => openFullscreenVideo(url);
-
-      div.appendChild(v);
-
-    } else {
-      const img = document.createElement('img');
-      img.src = url;
-      img.alt = r.public_id || "foto";
-
-      img.onclick = () => openFullscreenImg(url);
-
-      div.appendChild(img);
-    }
-
-    gallery.appendChild(div);
-  }
-
-
-  // -------------------------------
-  //     FULLSCREEN VIEWER
-  // -------------------------------
-
-  function openFullscreenImg(src) {
-    lightboxContent.innerHTML = `<img src="${src}">`;
-    lightbox.style.display = "flex";
-  }
-
-  function openFullscreenVideo(src) {
-    lightboxContent.innerHTML = `<video src="${src}" controls autoplay></video>`;
-    lightbox.style.display = "flex";
-  }
-
-  closeBtn.onclick = () => {
-    lightbox.style.display = "none";
-    lightboxContent.innerHTML = "";
-  };
-
-  lightbox.onclick = (e) => {
-    if (e.target === lightbox) {
-      lightbox.style.display = "none";
-      lightboxContent.innerHTML = "";
-    }
-  };
-</script>
-
-</body>
-</html>
+function renderNextPage() {
+const next = resources.slice(index, index + PAGE_SIZE);
+next.forEach(renderItem);
