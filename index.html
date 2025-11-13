@@ -38,14 +38,13 @@ header { background:var(--main-color); color:white; padding:1.2rem; font-size:1.
 const CLOUD_NAME = 'dvyf7rti4';
 const UPLOAD_PRESET = 'evory-moments';
 const FOLDER_NAME = 'eventos'; // Carpeta donde se guardan los recuerdos
-const PAGE_SIZE = 12; // Cantidad de recuerdos a cargar por scroll
+const PAGE_SIZE = 20; // Máximo 20 archivos al iniciar
+let currentIndex = 0;
+let allResources = [];
 
 const gallery = document.getElementById("gallery");
 const loadingText = document.getElementById("loading");
 const ffmpeg = FFmpeg.createFFmpeg({ log: false });
-
-let allResources = []; // Todos los archivos de Cloudinary
-let currentIndex = 0;
 
 // ===================== SUBIDA DE ARCHIVOS =====================
 async function compressImage(file) {
@@ -122,24 +121,24 @@ function prependGalleryItem(url, type) {
   gallery.prepend(div);
 }
 
-function loadNextResources() {
-  const next = allResources.slice(currentIndex, currentIndex + PAGE_SIZE);
-  next.forEach(res => renderGalleryItem(res.secure_url, res.resource_type));
-  currentIndex += PAGE_SIZE;
-}
-
 // ===================== CARGAR RECURSOS DESDE CLOUDINARY =====================
 async function loadResources() {
-  let url = `https://res.cloudinary.com/${CLOUD_NAME}/image/list/${FOLDER_NAME}.json`;
-  // Nota: Cloudinary permite JSON list si configuras la carpeta con "auto-generate"
   try {
+    const url = `https://res.cloudinary.com/${CLOUD_NAME}/image/list/${FOLDER_NAME}.json`;
     const res = await fetch(url);
     const data = await res.json();
     allResources = data.resources;
     loadNextResources();
   } catch(e) {
     console.error("Error cargando recursos:", e);
+    gallery.innerHTML = "<p>No se pudieron cargar los recuerdos.</p>";
   }
+}
+
+function loadNextResources() {
+  const next = allResources.slice(currentIndex, currentIndex + PAGE_SIZE);
+  next.forEach(res => renderGalleryItem(res.secure_url, res.resource_type));
+  currentIndex += PAGE_SIZE;
 }
 
 // ===================== SCROLL INFINITO =====================
