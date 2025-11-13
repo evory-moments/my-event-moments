@@ -10,9 +10,8 @@
 body { font-family: 'Poppins', sans-serif; margin:0; padding:0; background:#f5f5f5; color:#333; text-align:center; }
 header { background:var(--main-color); color:white; padding:1.2rem; font-size:1.6rem; font-weight:600; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
 .container { max-width:1000px; margin:2rem auto; padding:0 1rem; }
-.add-button { display:inline-block; background:var(--main-color); color:white; font-weight:600; padding:1rem 2rem; border-radius:10px; cursor:pointer; transition:0.3s; margin-bottom:2rem; }
+.add-button { background:var(--main-color); color:white; font-weight:600; padding:1rem 2rem; border-radius:10px; cursor:pointer; transition:0.3s; margin-bottom:2rem; border:none; font-size:1rem; }
 .add-button:hover { background:#27ae60; }
-.add-button input { display:none; }
 .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem; }
 .gallery-item { background:white; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); overflow:hidden; transition: transform 0.2s; }
 .gallery-item:hover { transform:scale(1.03); }
@@ -24,10 +23,8 @@ header { background:var(--main-color); color:white; padding:1.2rem; font-size:1.
 <header>📸 Álbum de Recuerdos</header>
 
 <div class="container">
-  <label class="add-button">
-    Agregar Recuerdo
-    <input type="file" id="fileInput" accept="image/*,video/*">
-  </label>
+  <button id="addButton" class="add-button">Agregar Recuerdo</button>
+  <input type="file" id="fileInput" accept="image/*,video/*" style="display:none;">
   <div class="loading" id="loading">Subiendo archivo, por favor espera...</div>
   <div class="gallery" id="gallery"></div>
 </div>
@@ -38,78 +35,86 @@ header { background:var(--main-color); color:white; padding:1.2rem; font-size:1.
 <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.5/dist/ffmpeg.min.js"></script>
 
 <script>
-const CLOUD_NAME = 'dvyf7rti4';
-const UPLOAD_PRESET = 'evory-moments';
-const gallery = document.getElementById("gallery");
-const loadingText = document.getElementById("loading");
-const ffmpeg = FFmpeg.createFFmpeg({ log: false });
+  // ==========================
+  // CONFIGURA ESTO
+  const CLOUD_NAME = 'dvyf7rti4';
+  const UPLOAD_PRESET = 'evory-moments';
+  const gallery = document.getElementById("gallery");
+  const loadingText = document.getElementById("loading");
+  // ==========================
 
-async function compressImage(file) {
-  const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/jpeg' };
-  return await imageCompression(file, options);
-}
+  const ffmpeg = FFmpeg.createFFmpeg({ log: false });
 
-async function compressVideo(file) {
-  if (!ffmpeg.isLoaded()) await ffmpeg.load();
-  ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
-  await ffmpeg.run('-i','input.mp4','-b:v','2M','output.mp4');
-  const data = ffmpeg.FS('readFile','output.mp4');
-  return new Blob([data.buffer], { type: 'video/mp4' });
-}
-
-async function uploadToCloudinary(file, type) {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', UPLOAD_PRESET);
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${type}/upload`, {
-    method: 'POST',
-    body: formData
-  });
-  return await res.json();
-}
-
-function renderGalleryItem(url, type) {
-  const div = document.createElement("div");
-  div.className = "gallery-item";
-  if(type === 'video') {
-    div.innerHTML = `<video src="${url}" controls preload="none" loading="lazy"></video>`;
-  } else {
-    div.innerHTML = `<img src="${url}" alt="Recuerdo" loading="lazy">`;
+  async function compressImage(file) {
+    const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/jpeg' };
+    return await imageCompression(file, options);
   }
-  gallery.appendChild(div);
-}
 
-async function handleFile(file) {
-  loadingText.style.display = 'block';
-  try {
-    let processedFile = file;
+  async function compressVideo(file) {
+    if (!ffmpeg.isLoaded()) await ffmpeg.load();
+    ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
+    await ffmpeg.run('-i','input.mp4','-b:v','2M','output.mp4');
+    const data = ffmpeg.FS('readFile','output.mp4');
+    return new Blob([data.buffer], { type: 'video/mp4' });
+  }
 
-    if(file.type.startsWith('image/')) {
-      processedFile = await compressImage(file);
-      const result = await uploadToCloudinary(processedFile, 'image');
-      renderGalleryItem(result.secure_url, 'image');
+  async function uploadToCloudinary(file, type) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', UPLOAD_PRESET);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${type}/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    return await res.json();
+  }
 
-    } else if(file.type.startsWith('video/')) {
-      processedFile = await compressVideo(file);
-      const result = await uploadToCloudinary(processedFile, 'video');
-      renderGalleryItem(result.secure_url, 'video');
-
+  function renderGalleryItem(url, type) {
+    const div = document.createElement("div");
+    div.className = "gallery-item";
+    if(type === 'video') {
+      div.innerHTML = `<video src="${url}" controls preload="none" loading="lazy"></video>`;
     } else {
-      alert("Tipo de archivo no soportado");
+      div.innerHTML = `<img src="${url}" alt="Recuerdo" loading="lazy">`;
     }
-  } catch(e) {
-    console.error(e);
-    alert("Error al subir el archivo: " + e.message);
-  } finally {
-    loadingText.style.display = 'none';
-    document.getElementById("fileInput").value = '';
+    gallery.appendChild(div);
   }
-}
 
-document.getElementById("fileInput").addEventListener('change', e => {
-  const file = e.target.files[0];
-  if(file) handleFile(file);
-});
+  async function handleFile(file) {
+    loadingText.style.display = 'block';
+    try {
+      let processedFile = file;
+
+      if(file.type.startsWith('image/')) {
+        processedFile = await compressImage(file);
+        const result = await uploadToCloudinary(processedFile, 'image');
+        renderGalleryItem(result.secure_url, 'image');
+
+      } else if(file.type.startsWith('video/')) {
+        processedFile = await compressVideo(file);
+        const result = await uploadToCloudinary(processedFile, 'video');
+        renderGalleryItem(result.secure_url, 'video');
+
+      } else {
+        alert("Tipo de archivo no soportado");
+      }
+    } catch(e) {
+      console.error(e);
+      alert("Error al subir el archivo: " + e.message);
+    } finally {
+      loadingText.style.display = 'none';
+      document.getElementById("fileInput").value = '';
+    }
+  }
+
+  // Evento para abrir selector de archivos desde el botón
+  const addButton = document.getElementById('addButton');
+  const fileInput = document.getElementById('fileInput');
+  addButton.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if(file) handleFile(file);
+  });
 </script>
 </body>
 </html>
