@@ -32,78 +32,22 @@ header { background:var(--main-color); color:white; padding:1.2rem; font-size:1.
 <footer>Hecho con 💚 para tus mejores recuerdos</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.0/dist/browser-image-compression.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.5/dist/ffmpeg.min.js"></script>
-
 <script>
-const CLOUD_NAME = 'dvyf7rti4';
-const UPLOAD_PRESET = 'evory-moments';
-const FOLDER_NAME = 'moments';
-const PAGE_SIZE = 20; // máximo 20 recuerdos al iniciar
-
+const SCRIPT_URL = 'TU_SCRIPT_APP_URL';
+const PAGE_SIZE = 20;
+let allUrls = [];
 let currentIndex = 0;
-let allResources = [];
 
-const gallery = document.getElementById("gallery");
-const loadingText = document.getElementById("loading");
-const ffmpeg = FFmpeg.createFFmpeg({ log: false });
+const gallery = document.getElementById('gallery');
+const loadingText = document.getElementById('loading');
+const fileInput = document.getElementById('fileInput');
+const addButton = document.getElementById('addButton');
 
-// ===================== SUBIDA DE ARCHIVOS =====================
-async function compressImage(file) {
-  const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/jpeg' };
-  return await imageCompression(file, options);
-}
-
-async function compressVideo(file) {
-  if (!ffmpeg.isLoaded()) await ffmpeg.load();
-  ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
-  await ffmpeg.run('-i','input.mp4','-b:v','2M','output.mp4');
-  const data = ffmpeg.FS('readFile','output.mp4');
-  return new Blob([data.buffer], { type: 'video/mp4' });
-}
-
-async function uploadToCloudinary(file, type) {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', UPLOAD_PRESET);
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${type}/upload`, {
-    method: 'POST',
-    body: formData
-  });
-  return await res.json();
-}
-
-async function handleFile(file) {
-  loadingText.style.display = 'block';
-  try {
-    let processedFile = file;
-
-    if(file.type.startsWith('image/')) {
-      processedFile = await compressImage(file);
-      const result = await uploadToCloudinary(processedFile, 'image');
-      prependGalleryItem(result.secure_url, 'image');
-
-    } else if(file.type.startsWith('video/')) {
-      processedFile = await compressVideo(file);
-      const result = await uploadToCloudinary(processedFile, 'video');
-      prependGalleryItem(result.secure_url, 'video');
-
-    } else {
-      alert("Tipo de archivo no soportado");
-    }
-  } catch(e) {
-    console.error(e);
-    alert("Error al subir el archivo: " + e.message);
-  } finally {
-    loadingText.style.display = 'none';
-    fileInput.value = '';
-  }
-}
-
-// ===================== GALERÍA =====================
-function renderGalleryItem(url, type) {
-  const div = document.createElement("div");
-  div.className = "gallery-item";
-  if(type === 'video') {
+// ======= Funciones =======
+function renderGalleryItem(url) {
+  const div = document.createElement('div');
+  div.className = 'gallery-item';
+  if(url.match(/\.(mp4|mov|webm)$/i)) {
     div.innerHTML = `<video src="${url}" controls preload="none" loading="lazy"></video>`;
   } else {
     div.innerHTML = `<img src="${url}" alt="Recuerdo" loading="lazy">`;
@@ -111,62 +55,69 @@ function renderGalleryItem(url, type) {
   gallery.appendChild(div);
 }
 
-function prependGalleryItem(url, type) {
-  const div = document.createElement("div");
-  div.className = "gallery-item";
-  if(type === 'video') {
-    div.innerHTML = `<video src="${url}" controls preload="none" loading="lazy"></video>`;
-  } else {
-    div.innerHTML = `<img src="${url}" alt="Recuerdo" loading="lazy">`;
-  }
-  gallery.prepend(div);
-}
-
-// ===================== CARGAR RECURSOS DESDE CLOUDINARY API =====================
-async function loadResources() {
-  try {
-    const url = `https://res.cloudinary.com/${CLOUD_NAME}/api/v1_1/${CLOUD_NAME}/resources/image?type=upload&prefix=${FOLDER_NAME}&max_results=100`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    const videoUrl = `https://res.cloudinary.com/${CLOUD_NAME}/api/v1_1/${CLOUD_NAME}/resources/video?type=upload&prefix=${FOLDER_NAME}&max_results=100`;
-    const resVideo = await fetch(videoUrl);
-    const dataVideo = await resVideo.json();
-
-    allResources = [...data.resources, ...dataVideo.resources];
-    allResources.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)); // más reciente primero
-    loadNextResources();
-
-  } catch(e) {
-    console.error("Error cargando recursos:", e);
-    gallery.innerHTML = "<p>No se pudieron cargar los recuerdos.</p>";
-  }
-}
-
-function loadNextResources() {
-  const next = allResources.slice(currentIndex, currentIndex + PAGE_SIZE);
-  next.forEach(res => renderGalleryItem(res.secure_url, res.resource_type));
+function loadNextUrls() {
+  const next = allUrls.slice(currentIndex, currentIndex + PAGE_SIZE);
+  next.forEach(renderGalleryItem);
   currentIndex += PAGE_SIZE;
 }
 
-// ===================== SCROLL INFINITO =====================
+// Lazy load scroll
 window.addEventListener('scroll', () => {
   if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
-    if(currentIndex < allResources.length) loadNextResources();
+    if(currentIndex < allUrls.length) loadNextUrls();
   }
 });
 
-// ===================== EVENTOS BOTÓN =====================
-const addButton = document.getElementById('addButton');
-const fileInput = document.getElementById('fileInput');
+// ======= Subir archivo =======
+async function handleFile(file) {
+  loadingText.style.display = 'block';
+  try {
+    let processedFile = file;
+
+    if(file.type.startsWith('image/')) {
+      processedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1920 });
+    }
+    const formData = new FormData();
+    formData.append('file', processedFile);
+
+    const res = await fetch(SCRIPT_URL, { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if(data.status === 'success') {
+      allUrls.unshift(data.url);
+      renderGalleryItem(data.url);
+    } else {
+      alert('Error: ' + data.message);
+    }
+
+  } catch(e) {
+    alert('Error al subir: ' + e.message);
+  } finally {
+    loadingText.style.display = 'none';
+    fileInput.value = '';
+  }
+}
+
+// ======= Cargar desde Sheet =======
+async function loadGallery() {
+  gallery.innerHTML = '<p>Cargando recuerdos...</p>';
+  const sheetCsvUrl = 'TU_SHEET_CSV_URL';
+  const res = await fetch(sheetCsvUrl);
+  const text = await res.text();
+  const rows = text.split('\n').slice(1);
+  allUrls = rows.map(r => r.trim()).filter(r => r);
+  gallery.innerHTML = '';
+  loadNextUrls();
+}
+
+// ======= Eventos =======
 addButton.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', e => {
-  const file = e.target.files[0];
-  if(file) handleFile(file);
+  if(e.target.files[0]) handleFile(e.target.files[0]);
 });
 
-// ===================== INICIAL =====================
-loadResources();
+// ======= Inicial =======
+loadGallery();
 </script>
 </body>
 </html>
