@@ -35,86 +35,131 @@ header { background:var(--main-color); color:white; padding:1.2rem; font-size:1.
 <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.5/dist/ffmpeg.min.js"></script>
 
 <script>
-  // ==========================
-  // CONFIGURA ESTO
-  const CLOUD_NAME = 'dvyf7rti4';
-  const UPLOAD_PRESET = 'evory-moments';
-  const gallery = document.getElementById("gallery");
-  const loadingText = document.getElementById("loading");
-  // ==========================
+const CLOUD_NAME = 'dvyf7rti4';
+const UPLOAD_PRESET = 'evory-moments';
+const FOLDER_NAME = 'eventos'; // Carpeta donde se guardan los recuerdos
+const PAGE_SIZE = 12; // Cantidad de recuerdos a cargar por scroll
 
-  const ffmpeg = FFmpeg.createFFmpeg({ log: false });
+const gallery = document.getElementById("gallery");
+const loadingText = document.getElementById("loading");
+const ffmpeg = FFmpeg.createFFmpeg({ log: false });
 
-  async function compressImage(file) {
-    const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/jpeg' };
-    return await imageCompression(file, options);
-  }
+let allResources = []; // Todos los archivos de Cloudinary
+let currentIndex = 0;
 
-  async function compressVideo(file) {
-    if (!ffmpeg.isLoaded()) await ffmpeg.load();
-    ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
-    await ffmpeg.run('-i','input.mp4','-b:v','2M','output.mp4');
-    const data = ffmpeg.FS('readFile','output.mp4');
-    return new Blob([data.buffer], { type: 'video/mp4' });
-  }
+// ===================== SUBIDA DE ARCHIVOS =====================
+async function compressImage(file) {
+  const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/jpeg' };
+  return await imageCompression(file, options);
+}
 
-  async function uploadToCloudinary(file, type) {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', UPLOAD_PRESET);
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${type}/upload`, {
-      method: 'POST',
-      body: formData
-    });
-    return await res.json();
-  }
+async function compressVideo(file) {
+  if (!ffmpeg.isLoaded()) await ffmpeg.load();
+  ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
+  await ffmpeg.run('-i','input.mp4','-b:v','2M','output.mp4');
+  const data = ffmpeg.FS('readFile','output.mp4');
+  return new Blob([data.buffer], { type: 'video/mp4' });
+}
 
-  function renderGalleryItem(url, type) {
-    const div = document.createElement("div");
-    div.className = "gallery-item";
-    if(type === 'video') {
-      div.innerHTML = `<video src="${url}" controls preload="none" loading="lazy"></video>`;
-    } else {
-      div.innerHTML = `<img src="${url}" alt="Recuerdo" loading="lazy">`;
-    }
-    gallery.appendChild(div);
-  }
-
-  async function handleFile(file) {
-    loadingText.style.display = 'block';
-    try {
-      let processedFile = file;
-
-      if(file.type.startsWith('image/')) {
-        processedFile = await compressImage(file);
-        const result = await uploadToCloudinary(processedFile, 'image');
-        renderGalleryItem(result.secure_url, 'image');
-
-      } else if(file.type.startsWith('video/')) {
-        processedFile = await compressVideo(file);
-        const result = await uploadToCloudinary(processedFile, 'video');
-        renderGalleryItem(result.secure_url, 'video');
-
-      } else {
-        alert("Tipo de archivo no soportado");
-      }
-    } catch(e) {
-      console.error(e);
-      alert("Error al subir el archivo: " + e.message);
-    } finally {
-      loadingText.style.display = 'none';
-      document.getElementById("fileInput").value = '';
-    }
-  }
-
-  // Evento para abrir selector de archivos desde el botón
-  const addButton = document.getElementById('addButton');
-  const fileInput = document.getElementById('fileInput');
-  addButton.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', e => {
-    const file = e.target.files[0];
-    if(file) handleFile(file);
+async function uploadToCloudinary(file, type) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', UPLOAD_PRESET);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${type}/upload`, {
+    method: 'POST',
+    body: formData
   });
+  return await res.json();
+}
+
+async function handleFile(file) {
+  loadingText.style.display = 'block';
+  try {
+    let processedFile = file;
+
+    if(file.type.startsWith('image/')) {
+      processedFile = await compressImage(file);
+      const result = await uploadToCloudinary(processedFile, 'image');
+      prependGalleryItem(result.secure_url, 'image');
+
+    } else if(file.type.startsWith('video/')) {
+      processedFile = await compressVideo(file);
+      const result = await uploadToCloudinary(processedFile, 'video');
+      prependGalleryItem(result.secure_url, 'video');
+
+    } else {
+      alert("Tipo de archivo no soportado");
+    }
+  } catch(e) {
+    console.error(e);
+    alert("Error al subir el archivo: " + e.message);
+  } finally {
+    loadingText.style.display = 'none';
+    fileInput.value = '';
+  }
+}
+
+// ===================== GALERÍA =====================
+function renderGalleryItem(url, type) {
+  const div = document.createElement("div");
+  div.className = "gallery-item";
+  if(type === 'video') {
+    div.innerHTML = `<video src="${url}" controls preload="none" loading="lazy"></video>`;
+  } else {
+    div.innerHTML = `<img src="${url}" alt="Recuerdo" loading="lazy">`;
+  }
+  gallery.appendChild(div);
+}
+
+function prependGalleryItem(url, type) {
+  const div = document.createElement("div");
+  div.className = "gallery-item";
+  if(type === 'video') {
+    div.innerHTML = `<video src="${url}" controls preload="none" loading="lazy"></video>`;
+  } else {
+    div.innerHTML = `<img src="${url}" alt="Recuerdo" loading="lazy">`;
+  }
+  gallery.prepend(div);
+}
+
+function loadNextResources() {
+  const next = allResources.slice(currentIndex, currentIndex + PAGE_SIZE);
+  next.forEach(res => renderGalleryItem(res.secure_url, res.resource_type));
+  currentIndex += PAGE_SIZE;
+}
+
+// ===================== CARGAR RECURSOS DESDE CLOUDINARY =====================
+async function loadResources() {
+  let url = `https://res.cloudinary.com/${CLOUD_NAME}/image/list/${FOLDER_NAME}.json`;
+  // Nota: Cloudinary permite JSON list si configuras la carpeta con "auto-generate"
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    allResources = data.resources;
+    loadNextResources();
+  } catch(e) {
+    console.error("Error cargando recursos:", e);
+  }
+}
+
+// ===================== SCROLL INFINITO =====================
+window.addEventListener('scroll', () => {
+  if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
+    if(currentIndex < allResources.length) loadNextResources();
+  }
+});
+
+// ===================== EVENTOS BOTÓN =====================
+const addButton = document.getElementById('addButton');
+const fileInput = document.getElementById('fileInput');
+addButton.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(file) handleFile(file);
+});
+
+// ===================== INICIAL =====================
+loadResources();
 </script>
 </body>
 </html>
