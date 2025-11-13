@@ -34,10 +34,9 @@ header { background:var(--main-color); color:white; padding:1.2rem; font-size:1.
 <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.0/dist/browser-image-compression.js"></script>
 <script>
 /* ===================== CONFIG ===================== */
-const CLOUD_NAME = 'dvyf7rti4';
-const UPLOAD_PRESET = 'evory-moments';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzoxEmMaYpU39mXFkQQimVoT51DCNe6xycZx6zEaDxCwngQEcyss_0gzf1FoeYODFktaw/exec';
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ2OKzdNbfLoqWpJQet5zoExBcOfF7nKaIXh4JYK6KplbYSIUJFe6J0hR8trAYq1tGeSFFAVwDDRKrF/pub?output=csv';
 const PAGE_SIZE = 20;
-const JSON_FILE = 'recuerdos.json'; // Archivo JSON en tu repo
 
 let allUrls = [];
 let currentIndex = 0;
@@ -83,41 +82,56 @@ async function handleFile(file){
       processedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1920 });
     }
 
-    const formData = new FormData();
-    formData.append('file', processedFile);
+    // Convertir a Base64
+    const reader = new FileReader();
+    reader.readAsDataURL(processedFile);
+    reader.onload = async () => {
+      const base64Data = reader.result.split(',')[1]; // quitar data:image/png;base64,
+      const formData = new FormData();
+      formData.append('fileName', file.name);
+      formData.append('fileBase64', base64Data);
 
-    const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
-    formData.append('upload_preset', UPLOAD_PRESET);
-
-    const res = await fetch(url, { method: 'POST', body: formData });
-    const data = await res.json();
-
-    if(data.secure_url){
-      allUrls.unshift(data.secure_url);
-      renderGalleryItem(data.secure_url);
-      alert("Recuerdo subido correctamente. Ahora agrega la URL al JSON para que sea permanente.");
-    } else {
-      alert('Error subiendo a Cloudinary.');
-      console.error(data);
-    }
+      try{
+        const res = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if(data.status === 'success'){
+          allUrls.unshift(data.url);
+          renderGalleryItem(data.url);
+          alert("Recuerdo subido correctamente y agregado al álbum.");
+        } else {
+          alert("Error: " + data.message);
+        }
+      }catch(err){
+        alert("Error al subir: " + err.message);
+      }finally{
+        loadingText.style.display = 'none';
+        fileInput.value = '';
+      }
+    };
 
   }catch(e){
-    alert('Error al subir: ' + e.message);
-  } finally{
+    alert('Error al procesar: ' + e.message);
     loadingText.style.display = 'none';
-    fileInput.value = '';
   }
 }
 
-/* ===================== CARGAR DESDE JSON ===================== */
+/* ===================== CARGAR DESDE GOOGLE SHEET ===================== */
 async function loadGallery(){
   gallery.innerHTML = '<p>Cargando recuerdos...</p>';
   try{
-    const res = await fetch(JSON_FILE);
-    const data = await res.json();
-    allUrls = data;
+    const res = await fetch(SHEET_CSV_URL);
+    const text = await res.text();
+    const rows = text.split('\n').slice(1).map(r => r.trim()).filter(r => r);
+    allUrls = rows;
     gallery.innerHTML = '';
-    loadNextUrls();
+    if(allUrls.length === 0){
+      gallery.innerHTML = '<p>No hay recuerdos aún. Sé el primero en subir uno!</p>';
+    } else {
+      loadNextUrls();
+    }
   }catch(e){
     console.error(e);
     gallery.innerHTML = '<p>No se pudieron cargar los recuerdos.</p>';
