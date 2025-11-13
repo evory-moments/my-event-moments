@@ -3,24 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Álbum de Recuerdos</title>
+<title>Álbum de Recuerdos Cloudinary</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 <style>
-:root { --main-color: #2ecc71; }
-body { font-family: 'Poppins', sans-serif; margin:0; padding:0; background:#f5f5f5; color:#333; text-align:center; }
-header { background:var(--main-color); color:white; padding:1.2rem; font-size:1.6rem; font-weight:600; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
+body { font-family:'Poppins',sans-serif; margin:0; padding:0; background:#f5f5f5; text-align:center; }
+header { background:#2ecc71; color:white; padding:1.2rem; font-size:1.6rem; font-weight:600; }
 .container { max-width:1000px; margin:2rem auto; padding:0 1rem; }
-.add-button { background:var(--main-color); color:white; font-weight:600; padding:1rem 2rem; border-radius:10px; cursor:pointer; transition:0.3s; margin-bottom:2rem; border:none; font-size:1rem; }
+.add-button { background:#2ecc71; color:white; font-weight:600; padding:1rem 2rem; border-radius:10px; cursor:pointer; transition:0.3s; margin-bottom:2rem; border:none; font-size:1rem; }
 .add-button:hover { background:#27ae60; }
 .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem; }
-.gallery-item { background:white; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); overflow:hidden; transition: transform 0.2s; }
+.gallery-item { background:white; border-radius:10px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.1); transition:transform 0.2s; }
 .gallery-item:hover { transform:scale(1.03); }
-.gallery-item img, .gallery-item video { width:100%; height:220px; object-fit:cover; display:block; }
-.loading { display:none; margin-top:1rem; color:var(--main-color); font-weight:bold; }
+.gallery-item img,.gallery-item video { width:100%; height:220px; object-fit:cover; display:block; }
+.loading { display:none; margin-top:1rem; color:#2ecc71; font-weight:bold; }
 </style>
 </head>
 <body>
-<header>📸 Álbum de Recuerdos</header>
+<header>📸 Álbum de Recuerdos Cloudinary</header>
 
 <div class="container">
   <button id="addButton" class="add-button">Agregar Recuerdo</button>
@@ -37,7 +36,8 @@ header { background:var(--main-color); color:white; padding:1.2rem; font-size:1.
 const CLOUD_NAME = 'dvyf7rti4';
 const UPLOAD_PRESET = 'evory-moments';
 const FOLDER_NAME = 'moments';
-const JSON_URL = 'recuerdos.json'; // JSON público con URLs
+const API_KEY = 'evory-moments-15112025';
+const API_SECRET = 'bmJzeEdhQWpVRVhKdUVsdG9ocjlleUVaTTUw';
 const PAGE_SIZE = 20;
 
 /* ===================== VARIABLES ===================== */
@@ -55,7 +55,7 @@ function renderGalleryItem(url){
   div.className = 'gallery-item';
   if(url.match(/\.(mp4|mov|webm)$/i)){
     div.innerHTML = `<video src="${url}" controls preload="none" loading="lazy"></video>`;
-  }else{
+  } else {
     div.innerHTML = `<img src="${url}" alt="Recuerdo" loading="lazy">`;
   }
   gallery.appendChild(div);
@@ -93,8 +93,7 @@ async function handleFile(file){
     if(data.secure_url){
       allUrls.unshift(data.secure_url);
       renderGalleryItem(data.secure_url);
-      alert("Recuerdo subido correctamente y agregado al álbum.");
-    }else{
+    } else {
       alert("Error al subir: " + JSON.stringify(data));
     }
   }catch(e){
@@ -105,22 +104,30 @@ async function handleFile(file){
   }
 }
 
-/* ===================== CARGAR DESDE JSON ===================== */
-async function loadGallery(){
-  gallery.innerHTML = '<p>Cargando recuerdos...</p>';
-  try{
-    const res = await fetch(JSON_URL);
-    const urls = await res.json();
-    allUrls = urls || [];
-    gallery.innerHTML = '';
-    if(allUrls.length === 0){
-      gallery.innerHTML = '<p>No hay recuerdos aún. Sé el primero en subir uno!</p>';
-    }else{
-      loadNextUrls();
+/* ===================== CARGAR DESDE CLOUDINARY ===================== */
+async function fetchCloudinaryResources(){
+  try {
+    const auth = btoa(API_KEY + ':' + API_SECRET); // Base64
+
+    const types = ['image','video'];
+    allUrls = [];
+
+    for(let type of types){
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/resources/${type}/upload?prefix=${FOLDER_NAME}&max_results=500`, {
+        headers: { 'Authorization': 'Basic ' + auth }
+      });
+      const data = await res.json();
+      if(data.resources){
+        data.resources.forEach(r => allUrls.push(r.secure_url));
+      }
     }
-  }catch(e){
+
+    allUrls.sort((a,b)=>b.localeCompare(a)); // recientes primero
+    loadNextUrls();
+
+  } catch(e){
+    console.error('Error cargando recursos:', e);
     gallery.innerHTML = '<p>No se pudieron cargar los recuerdos.</p>';
-    console.error(e);
   }
 }
 
@@ -129,7 +136,7 @@ addButton.addEventListener('click', ()=> fileInput.click());
 fileInput.addEventListener('change', e => { if(e.target.files[0]) handleFile(e.target.files[0]); });
 
 /* ===================== INICIAL ===================== */
-loadGallery();
+fetchCloudinaryResources();
 </script>
 </body>
 </html>
