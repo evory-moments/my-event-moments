@@ -37,8 +37,9 @@ header { background:var(--main-color); color:white; padding:1.2rem; font-size:1.
 <script>
 const CLOUD_NAME = 'dvyf7rti4';
 const UPLOAD_PRESET = 'evory-moments';
-const FOLDER_NAME = 'moments'; // Carpeta donde se guardan los recuerdos
-const PAGE_SIZE = 20; // Máximo 20 archivos al iniciar
+const FOLDER_NAME = 'moments';
+const PAGE_SIZE = 20; // máximo 20 recuerdos al iniciar
+
 let currentIndex = 0;
 let allResources = [];
 
@@ -121,14 +122,21 @@ function prependGalleryItem(url, type) {
   gallery.prepend(div);
 }
 
-// ===================== CARGAR RECURSOS DESDE CLOUDINARY =====================
+// ===================== CARGAR RECURSOS DESDE CLOUDINARY API =====================
 async function loadResources() {
   try {
-    const url = `https://res.cloudinary.com/${CLOUD_NAME}/image/list/${FOLDER_NAME}.json`;
+    const url = `https://res.cloudinary.com/${CLOUD_NAME}/api/v1_1/${CLOUD_NAME}/resources/image?type=upload&prefix=${FOLDER_NAME}&max_results=100`;
     const res = await fetch(url);
     const data = await res.json();
-    allResources = data.resources;
+
+    const videoUrl = `https://res.cloudinary.com/${CLOUD_NAME}/api/v1_1/${CLOUD_NAME}/resources/video?type=upload&prefix=${FOLDER_NAME}&max_results=100`;
+    const resVideo = await fetch(videoUrl);
+    const dataVideo = await resVideo.json();
+
+    allResources = [...data.resources, ...dataVideo.resources];
+    allResources.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)); // más reciente primero
     loadNextResources();
+
   } catch(e) {
     console.error("Error cargando recursos:", e);
     gallery.innerHTML = "<p>No se pudieron cargar los recuerdos.</p>";
