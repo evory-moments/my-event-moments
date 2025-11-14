@@ -1,36 +1,157 @@
-function renderItem(r) {
-const div = document.createElement('div');
-div.className = 'gallery-item';
-  // usar secure_url preferiblemente
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Álbum del Evento</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 
-const url = r.secure_url || r.url || '';
-if (!url) return;
+    h1 {
+      margin-top: 20px;
+      text-align: center;
+    }
 
-if ((r.resource_type && r.resource_type.toLowerCase() === 'video') || url.match(/\.(mp4|mov|webm)$/i)) {
+    #gallery {
+      width: 95%;
+      max-width: 1200px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
 
-    // Obtener cloud name y public_id
-    const cloudName = "dvyf7rti4";  // ← usa tu cloud name
-    const publicId = r.public_id;
+    .item {
+      cursor: pointer;
+      overflow: hidden;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      background: white;
+    }
 
-    // Generar thumbnail automático de Cloudinary
-    const poster = `https://res.cloudinary.com/${cloudName}/video/upload/so_auto,w_300,h_200,c_fill/${publicId}.jpg`;
+    .item img, .item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
 
-const v = document.createElement('video');
-v.src = url;
-v.controls = true;
-v.preload = 'none';
-v.loading = 'lazy';
-    v.poster = poster;  // ← MINIATURA !!!
-v.style.height = '220px';
+    /* Fullscreen modal */
+    #fullscreenModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
 
-div.appendChild(v);
-} else {
-const img = document.createElement('img');
-@@ -78,6 +89,7 @@
-gallery.appendChild(div);
-}
+    #fullscreenContent img,
+    #fullscreenContent video {
+      max-width: 95%;
+      max-height: 95%;
+    }
 
+    #closeBtn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 30px;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
 
-function renderNextPage() {
-const next = resources.slice(index, index + PAGE_SIZE);
-next.forEach(renderItem);
+  <h1>Álbum del Evento</h1>
+
+  <div id="gallery"></div>
+
+  <!-- Fullscreen viewer -->
+  <div id="fullscreenModal">
+    <div id="closeBtn">✖</div>
+    <div id="fullscreenContent"></div>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbxqrVrI1e31HKjiBRPi1wAalmv12TG1HtzFpVEAsqhRoaQ6vCNhV4ST1a9ocQnBd8Dh/exec";
+
+    async function cargarGaleria() {
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        const gallery = document.getElementById('gallery');
+        gallery.innerHTML = '';
+
+        data.resources.forEach(r => {
+          const div = document.createElement('div');
+          div.className = 'item';
+
+          if (r.resource_type === 'image') {
+            const img = document.createElement('img');
+            img.src = r.secure_url;
+            div.appendChild(img);
+          } else if (r.resource_type === 'video') {
+            const vid = document.createElement('video');
+            vid.src = r.secure_url;
+            vid.muted = true;
+            div.appendChild(vid);
+          }
+
+          div.onclick = () => mostrarFullscreen(r);
+          gallery.appendChild(div);
+        });
+      }
+      catch (e) {
+        console.error("Error cargando galería:", e);
+      }
+    }
+
+    function mostrarFullscreen(resource) {
+      const modal = document.getElementById('fullscreenModal');
+      const content = document.getElementById('fullscreenContent');
+
+      content.innerHTML = '';
+
+      if (resource.resource_type === 'image') {
+        const img = document.createElement('img');
+        img.src = resource.secure_url;
+        content.appendChild(img);
+      } else if (resource.resource_type === 'video') {
+        const vid = document.createElement('video');
+        vid.src = resource.secure_url;
+        vid.controls = true;
+        vid.autoplay = true;
+        content.appendChild(vid);
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    document.getElementById('closeBtn').onclick = () => {
+      const modal = document.getElementById('fullscreenModal');
+      const content = document.getElementById('fullscreenContent');
+
+      modal.style.display = 'none';
+      content.innerHTML = '';
+    };
+
+    cargarGaleria();
+  </script>
+
+</body>
+</html>
