@@ -1,169 +1,234 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Álbum del Evento</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f4f4f4;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    h1 {
-      margin-top: 20px;
-      text-align: center;
-    }
-
-    #gallery {
-      width: 95%;
-      max-width: 1200px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .item {
-      cursor: pointer;
-      overflow: hidden;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      background: white;
-    }
-
-    .item img, .item video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    /* 🔥 MOBILE: 4 por fila */
-    @media (max-width: 600px) {
-      #gallery {
-        grid-template-columns: repeat(4, 1fr) !important;
-        gap: 5px;
-      }
-
-      .item {
-        height: 80px; /* Puedes ajustarlo si quieres más alto o más bajo */
-      }
-    }
-
-    /* Fullscreen modal */
-    #fullscreenModal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.8);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
-
-    #fullscreenContent img,
-    #fullscreenContent video {
-      max-width: 95%;
-      max-height: 95%;
-    }
-
-    #closeBtn {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      font-size: 30px;
-      color: white;
-      cursor: pointer;
-      font-weight: bold;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Álbum de Recuerdos</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root { --main-color: #2ecc71; }
+body { font-family: 'Poppins', sans-serif; margin:0; padding:0; background:#f5f5f5; color:#333; text-align:center; }
+header { background:var(--main-color); color:white; padding:1.2rem; font-size:1.6rem; font-weight:600; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
+.container { max-width:1000px; margin:2rem auto; padding:0 1rem; }
+.add-button { background:var(--main-color); color:white; font-weight:600; padding:1rem 2rem; border-radius:10px; cursor:pointer; transition:0.3s; margin-bottom:2rem; border:none; font-size:1rem; }
+.add-button:hover { background:#27ae60; }
+.gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem; }
+.gallery-item { background:white; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); overflow:hidden; transition: transform 0.2s; }
+.gallery-item:hover { transform:scale(1.03); }
+.gallery-item img, .gallery-item video { width:100%; height:220px; object-fit:cover; display:block; }
+.loading { display:none; margin-top:1rem; color:var(--main-color); font-weight:bold; }
+.footer { margin:2rem 0 4rem; color:#666; }
+</style>
 </head>
 <body>
+<header>📸 Álbum de Recuerdos</header>
 
-  <h1>Álbum del Evento</h1>
+<div class="container">
+  <button id="addButton" class="add-button">Agregar Recuerdo</button>
+  <input type="file" id="fileInput" accept="image/*,video/*" style="display:none;">
+  <div class="loading" id="loading">Cargando...</div>
+  <div class="gallery" id="gallery"></div>
+  <div class="footer" id="footerInfo"></div>
+</div>
 
-  <div id="gallery"></div>
+<footer style="text-align:center;padding:1rem 0 3rem;color:#888;">Hecho con 💚</footer>
 
-  <!-- Fullscreen viewer -->
-  <div id="fullscreenModal">
-    <div id="closeBtn">✖</div>
-    <div id="fullscreenContent"></div>
-  </div>
+<script>
+/* ======== CONFIG ======== */
+// URL del Web App de Google Apps Script (reemplaza por tu URL /exec)
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwh9182ZGUHoCx49D-txEuQdtHe-QgBVsZOOhO7tIy8MRrZWGWPAc58lnPuUMylhhhKLg/exec';
 
-  <script>
-    const API_URL = "TU_URL_DEL_APP_SCRIPT_AQUI";
+// Carpeta/prefix en Cloudinary que quieres listar
+const FOLDER = 'moments';
 
-    async function cargarGaleria() {
+// Qué tipo: 'all' | 'image' | 'video'
+const RESOURCE_TYPE = 'all';
+
+// Paginación para render (cliente)
+const PAGE_SIZE = 20;
+
+/* ======== ESTADO ======== */
+let resources = [];
+let index = 0;
+const gallery = document.getElementById('gallery');
+const loading = document.getElementById('loading');
+const footerInfo = document.getElementById('footerInfo');
+
+function renderItem(r) {
+  const div = document.createElement('div');
+  div.className = 'gallery-item';
+  // usar secure_url preferiblemente
+  const url = r.secure_url || r.url || '';
+  if (!url) return;
+  if ((r.resource_type && r.resource_type.toLowerCase() === 'video') || url.match(/\.(mp4|mov|webm)$/i)) {
+    const v = document.createElement('video');
+    v.src = url;
+    v.controls = true;
+    v.preload = 'none';
+    v.loading = 'lazy';
+    v.style.height = '220px';
+    div.appendChild(v);
+  } else {
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = r.public_id || 'recuerdo';
+    img.loading = 'lazy';
+    div.appendChild(img);
+  }
+  gallery.appendChild(div);
+}
+
+function renderNextPage() {
+  const next = resources.slice(index, index + PAGE_SIZE);
+  next.forEach(renderItem);
+  index += PAGE_SIZE;
+}
+
+/* Scroll infinito simple */
+window.addEventListener('scroll', () => {
+  if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 150) {
+    if (index < resources.length) renderNextPage();
+  }
+});
+
+/* ======== FETCH al proxy ======== */
+async function fetchResources() {
+  loading.style.display = 'block';
+  gallery.innerHTML = '';
+  footerInfo.textContent = '';
+
+  // URL con parámetros
+  const url = new URL(APPS_SCRIPT_URL);
+  url.searchParams.set('folder', FOLDER);
+  url.searchParams.set('resource_type', RESOURCE_TYPE);
+  // Intenta fetch estándar
+  try {
+    const res = await fetch(url.toString(), { method: 'GET', credentials: 'omit' });
+    if (!res.ok) {
+      // si status 4xx/5xx, intentar fallback JSONP
+      throw new Error('Fetch fallo con status ' + res.status);
+    }
+    const js = await res.json();
+    if (!js.ok) {
+      throw new Error('Proxy error: ' + JSON.stringify(js.error || js));
+    }
+    resources = js.resources || [];
+    footerInfo.textContent = `Recursos: ${resources.length}`;
+    index = 0;
+    renderNextPage();
+  } catch (err) {
+    console.warn('fetch error, intentando JSONP fallback', err);
+    // Fallback JSONP: insertar <script> con callback
+    try {
+      await fetchViaJSONP(url);
+    } catch (e2) {
+      loading.style.display = 'none';
+      gallery.innerHTML = '<p>Error cargando recursos (revisa consola)</p>';
+      console.error('JSONP fallback error', e2);
+    }
+  } finally {
+    loading.style.display = 'none';
+  }
+}
+
+/* JSONP fallback:
+   Si por alguna razón CORS bloquea el fetch, el proxy acepta ?callback=miFn y responde JavaScript.
+   Esta función inyecta un <script> y espera la llamada.
+*/
+function fetchViaJSONP(baseUrl) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'cloudProxyCB_' + Math.random().toString(36).substr(2,8);
+    window[cbName] = function(data) {
       try {
-        const res = await fetch(API_URL);
-        const data = await res.json();
-        const gallery = document.getElementById('gallery');
-        gallery.innerHTML = '';
-
-        data.resources.forEach(r => {
-          const div = document.createElement('div');
-          div.className = 'item';
-
-          if (r.resource_type === 'image') {
-            const img = document.createElement('img');
-            img.src = r.secure_url;
-            div.appendChild(img);
-          } else if (r.resource_type === 'video') {
-            const vid = document.createElement('video');
-            vid.src = r.secure_url;
-            vid.muted = true;
-            div.appendChild(vid);
-          }
-
-          div.onclick = () => mostrarFullscreen(r);
-          gallery.appendChild(div);
-        });
+        if (!data || !data.ok) {
+          reject(new Error('JSONP error: ' + JSON.stringify(data)));
+          return;
+        }
+        resources = data.resources || [];
+        footerInfo.textContent = `Recursos: ${resources.length} (via JSONP)`;
+        index = 0;
+        renderNextPage();
+        resolve();
+      } finally {
+        // cleanup
+        try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
+        script.remove();
       }
-      catch (e) {
-        console.error("Error cargando galería:", e);
-      }
-    }
-
-    function mostrarFullscreen(resource) {
-      const modal = document.getElementById('fullscreenModal');
-      const content = document.getElementById('fullscreenContent');
-
-      content.innerHTML = '';
-
-      if (resource.resource_type === 'image') {
-        const img = document.createElement('img');
-        img.src = resource.secure_url;
-        content.appendChild(img);
-      } else if (resource.resource_type === 'video') {
-        const vid = document.createElement('video');
-        vid.src = resource.secure_url;
-        vid.controls = true;
-        vid.autoplay = true;
-        content.appendChild(vid);
-      }
-
-      modal.style.display = 'flex';
-    }
-
-    document.getElementById('closeBtn').onclick = () => {
-      const modal = document.getElementById('fullscreenModal');
-      const content = document.getElementById('fullscreenContent');
-
-      modal.style.display = 'none';
-      content.innerHTML = '';
     };
 
-    cargarGaleria();
-  </script>
+    const script = document.createElement('script');
+    const u = new URL(baseUrl.toString());
+    u.searchParams.set('callback', cbName);
+    script.src = u.toString();
+    script.onerror = function(ev) {
+      try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
+      script.remove();
+      reject(new Error('JSONP script load error'));
+    };
+    document.body.appendChild(script);
+    // si no resuelve en 10s, rechaza
+    setTimeout(() => {
+      if (window[cbName]) {
+        try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
+        script.remove();
+      }
+      reject(new Error('JSONP timeout'));
+    }, 10000);
+  });
+}
 
+/* ======== UPLOAD (opcional) ========
+   Si quieres mantener la funcionalidad de upload desde GH Pages hacia Cloudinary,
+   necesitas un upload preset "unsigned" en Cloudinary o subir desde tu servidor.
+   Aquí dejo simple lógica de upload usando un upload_preset unsigned (ya tenías en tu código).
+*/
+const CLOUD_NAME = 'dvyf7rti4'; // si usas tu propia cuenta, mantenla privada si no usas unsigned
+const UPLOAD_PRESET = 'evory-moments'; // unsigned preset si quieres permitir upload directo desde cliente
+const fileInput = document.getElementById('fileInput');
+const addButton = document.getElementById('addButton');
+
+addButton.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  loading.style.display = 'block';
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', UPLOAD_PRESET);
+  fd.append('folder', FOLDER);
+  try {
+    // upload directo a Cloudinary (unsigned preset)
+    const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, {
+      method: 'POST',
+      body: fd
+    });
+    const data = await resp.json();
+    if (data.secure_url) {
+      // añadir al inicio y re-render
+      resources.unshift({
+        secure_url: data.secure_url,
+        resource_type: data.resource_type || 'image',
+        public_id: data.public_id,
+        created_at: data.created_at
+      });
+      // re-render simplificado: limpiar y mostrar primeras PAGE_SIZE
+      gallery.innerHTML = '';
+      index = 0;
+      renderNextPage();
+      footerInfo.textContent = `Recursos: ${resources.length} (incluye upload reciente)`;
+    } else {
+      alert('Error al subir: ' + JSON.stringify(data));
+    }
+  } catch (err) {
+    alert('Error upload: ' + err.message);
+  } finally {
+    loading.style.display = 'none';
+    fileInput.value = '';
+  }
+});
+
+/* ======== Inicial ======== */
+fetchResources();
+</script>
 </body>
 </html>
