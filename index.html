@@ -9,10 +9,10 @@
 <style>
 :root {
   --main-color: #2ecc71;
-  --bg-color: #121212;
-  --card-bg: rgba(30, 30, 30, 0.85);
-  --text-color: #e0e0e0;
-  --shadow-color: rgba(0,0,0,0.6);
+  --bg-color: #ffffff;
+  --card-bg: rgba(250, 250, 250, 0.95);
+  --text-color: #333333;
+  --shadow-color: rgba(0,0,0,0.2);
 }
 
 body { 
@@ -34,35 +34,33 @@ header {
   padding:1.2rem; 
   font-size:1.6rem; 
   font-weight:600; 
-  box-shadow:0 2px 6px rgba(0,0,0,0.4); 
+  box-shadow:0 2px 6px rgba(0,0,0,0.2); 
 }
 
-.container { max-width:1000px; margin:2rem auto; padding:0 1rem; }
+.container { max-width:1000px; margin:1rem auto; padding:0 0; }
 
 .gallery { 
   display:grid; 
-  grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); 
-  gap:1rem; 
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); 
+  gap:0.5rem; 
 }
 
 .gallery-item { 
   background: var(--card-bg);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 8px 20px var(--shadow-color);
+  box-shadow: 0 4px 12px var(--shadow-color);
   position: relative;
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .gallery-item:hover { 
-  transform: translateY(-5px) scale(1.03); 
-  box-shadow: 0 12px 28px var(--shadow-color);
+  transform: translateY(-3px) scale(1.03); 
+  box-shadow: 0 8px 20px var(--shadow-color);
 }
 
 .gallery-item img, .gallery-item video { 
   width: 100%; 
-  height: 220px; 
+  height: 70%; 
   object-fit: cover; 
   opacity: 0; 
   transition: opacity .3s; 
@@ -74,28 +72,21 @@ header {
   top:50%;
   left:50%;
   transform: translate(-50%, -50%);
-  width:60px;
-  height:60px;
+  width:40px;
+  height:40px;
   background: rgba(255,255,255,0.6);
   clip-path: polygon(25% 20%, 25% 80%, 80% 50%);
   pointer-events:none;
   z-index:2;
 }
 
-@media (min-width: 601px){
-  .play-icon {
-    width:70px;
-    height:70px;
-  }
-}
-
 .loading { display:none; margin-top:1rem; color:var(--main-color); font-weight:bold; }
-.footer { margin:2rem 0 4rem; color:#aaa; font-size:0.9rem; }
+.footer { margin:2rem 0 4rem; color:#666; font-size:0.9rem; }
 
 @media (max-width: 600px) {
   .gallery.mobile-grid {
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 6px;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 4px;
   }
   .gallery.mobile-grid .gallery-item img,
   .gallery.mobile-grid .gallery-item video {
@@ -115,7 +106,7 @@ header {
   border-radius: 50px;
   border: none;
   font-size: 1rem;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
   cursor: pointer;
   z-index: 9999;
 }
