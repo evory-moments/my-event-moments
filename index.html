@@ -37,16 +37,16 @@ header {
   font-weight:600; 
   box-shadow:0 2px 6px rgba(0,0,0,0.2); 
   position: fixed;
-  top:0;
-  left:0;
-  width:100%;
+  width: 100%;
+  top: 0;
+  left: 0;
   z-index: 1000;
 }
 
 .container { 
   max-width:1000px; 
   margin:5rem auto 1rem; 
-  padding:0 1rem; 
+  padding:0 0; 
 }
 
 .gallery { 
@@ -61,7 +61,7 @@ header {
   box-shadow: 0 4px 12px var(--shadow-color);
   position: relative;
   transition: transform 0.3s, box-shadow 0.3s;
-  aspect-ratio: 1/1; /* cuadrado */
+  aspect-ratio: 1/1; 
 }
 
 .gallery-item:hover { 
@@ -98,29 +98,24 @@ header {
   font-weight:bold; 
 }
 
-.progress-container {
-  width: 100%;
-  background: #eee;
-  border-radius: 20px;
-  overflow: hidden;
-  margin: 1rem 0;
-  height: 12px;
-  display: none;
+.footer { 
+  margin:4rem 0 1rem; 
+  color:#666; 
+  font-size:0.9rem; 
 }
-
-.progress-bar {
-  width: 0%;
-  height: 100%;
-  background: var(--main-color);
-  transition: width 0.2s;
-}
-
-.footer { margin:4rem 0 1rem; color:#666; font-size:0.9rem; }
 
 @media (max-width: 600px) {
   .gallery.mobile-grid {
     grid-template-columns: repeat(5, 1fr) !important;
     gap: 2px;
+  }
+  .gallery-item {
+    width: 100%;
+    aspect-ratio: 1/1; 
+  }
+  .gallery.mobile-grid .gallery-item img,
+  .gallery.mobile-grid .gallery-item video {
+    height: 100% !important;
   }
 }
 
@@ -132,10 +127,10 @@ header {
   background: var(--main-color);
   color: white;
   font-weight: 600;
-  padding: 0.8rem 1.2rem;
+  padding: 0.8rem 1.2rem; /* altura reducida */
   border-radius: 50px;
   border: none;
-  font-size: 0.95rem;
+  font-size: 1rem;
   box-shadow: 0 6px 16px rgba(0,0,0,0.3);
   cursor: pointer;
   z-index: 9999;
@@ -197,6 +192,23 @@ header {
 
 #prevBtn { left:10px; }
 #nextBtn { right:10px; }
+
+.progress-bar-container {
+  width: 70%;
+  height: 8px;
+  background: #eee;
+  border-radius: 5px;
+  margin: 0.5rem auto;
+  overflow: hidden;
+  display: none;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--main-color);
+  transition: width 0.2s;
+}
 </style>
 </head>
 <body>
@@ -206,7 +218,7 @@ header {
 <div class="container">
   <input type="file" id="fileInput" accept="image/*,video/*" multiple style="display:none;">
   <div class="loading" id="loading">Cargando...</div>
-  <div class="progress-container" id="progressContainer">
+  <div class="progress-bar-container" id="progressContainer">
     <div class="progress-bar" id="progressBar"></div>
   </div>
   <div class="gallery mobile-grid" id="gallery"></div>
@@ -229,6 +241,7 @@ const WORKER_URL = 'https://lively-bush-fa83.jeastinls02.workers.dev/';
 const FOLDER = 'moments';
 const RESOURCE_TYPE = 'all';
 const PAGE_SIZE = 50;
+const MAX_FILES = 20;
 
 let resources = [];
 let index = 0;
@@ -236,9 +249,9 @@ let currentPreviewIndex = 0;
 
 const gallery = document.getElementById('gallery');
 const loading = document.getElementById('loading');
-const footerInfo = document.getElementById('footerInfo');
 const progressContainer = document.getElementById('progressContainer');
 const progressBar = document.getElementById('progressBar');
+const footerInfo = document.getElementById('footerInfo');
 
 const imgObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
@@ -257,24 +270,29 @@ const closePreview = document.getElementById("closePreview");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
 
-function disableApp(state){
-  document.body.style.pointerEvents = state ? 'none' : 'auto';
-  if(!state) document.body.classList.remove('preview-open');
+function disableApp() {
+  document.body.classList.add('preview-open');
+  addButton.disabled = true;
+}
+
+function enableApp() {
+  document.body.classList.remove('preview-open');
+  addButton.disabled = false;
 }
 
 closePreview.onclick = () => {
   previewOverlay.style.display = "none";
-  disableApp(false);
+  enableApp();
   const v = previewContent.querySelector("video");
   if(v) { v.pause(); v.src=""; }
   previewContent.innerHTML = "";
 };
 
 function openPreview(index) {
+  disableApp();
   currentPreviewIndex = index;
   const r = resources[currentPreviewIndex];
   previewContent.innerHTML = "";
-  disableApp(true);
 
   if(r.resource_type === "video") {
     const v = document.createElement("video");
@@ -303,10 +321,8 @@ prevBtn.onclick = showPrev;
 nextBtn.onclick = showNext;
 
 document.addEventListener('keydown', e=>{
-  if(previewOverlay.style.display==='flex'){
-    if(e.key==='ArrowLeft') showPrev();
-    if(e.key==='ArrowRight') showNext();
-  }
+  if(e.key==='ArrowLeft') showPrev();
+  if(e.key==='ArrowRight') showNext();
 });
 
 let touchStartX = null;
@@ -387,15 +403,22 @@ const addButton = document.getElementById('addButton');
 addButton.onclick = () => fileInput.click();
 
 fileInput.onchange = async (e)=>{
-  const files = Array.from(e.target.files).slice(0,10);
+  let files = Array.from(e.target.files);
+
   if(files.length === 0) return;
+
+  if(files.length > MAX_FILES){
+    alert("Solo puedes seleccionar hasta: " + MAX_FILES +" archivos a la vez.");
+    fileInput.value = "";
+    return;
+  }
 
   loading.style.display = 'block';
   progressContainer.style.display = 'block';
   progressBar.style.width = '0%';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  // Subir archivos
-  for(let i=0;i<files.length;i++){
+  for(let i = 0; i < files.length; i++){
     const file = files[i];
     const fd = new FormData();
     fd.append('file', file);
@@ -406,16 +429,14 @@ fileInput.onchange = async (e)=>{
     const data = await resp.json();
     if(data.secure_url) resources.unshift({secure_url: data.secure_url, resource_type: data.resource_type, public_id: data.public_id});
 
-    // Barra de progreso
-    const percent = Math.round(((i+1)/files.length)*100);
-    progressBar.style.width = percent+'%';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    progressBar.style.width = `${Math.round(((i+1)/files.length)*100)}%`;
   }
 
   gallery.innerHTML='';
   index=0;
   renderNextPage();
   footerInfo.textContent = `Recursos: ${resources.length}`;
+
   loading.style.display = 'none';
   progressContainer.style.display = 'none';
   fileInput.value='';
