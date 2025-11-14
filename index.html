@@ -7,23 +7,30 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 
 <style>
-:root { --main-color: #2ecc71; }
+:root {
+  --main-color: #2ecc71;
+  --bg-color: #121212;
+  --card-bg: rgba(30, 30, 30, 0.85);
+  --text-color: #e0e0e0;
+  --shadow-color: rgba(0,0,0,0.6);
+}
 
 body { 
   font-family: 'Poppins', sans-serif; 
   margin:0; 
   padding:0; 
-  background:#f5f5f5; 
-  color:#333; 
+  background: var(--bg-color); 
+  color: var(--text-color); 
   text-align:center; 
 }
+
 header { 
-  background:var(--main-color); 
+  background: var(--main-color); 
   color:white; 
   padding:1.2rem; 
   font-size:1.6rem; 
   font-weight:600; 
-  box-shadow:0 2px 6px rgba(0,0,0,0.2); 
+  box-shadow:0 2px 6px rgba(0,0,0,0.4); 
 }
 
 .container { max-width:1000px; margin:2rem auto; padding:0 1rem; }
@@ -33,24 +40,33 @@ header {
   grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); 
   gap:1rem; 
 }
+
 .gallery-item { 
-  background:white; 
-  border-radius:10px; 
-  overflow:hidden; 
-  box-shadow:0 2px 6px rgba(0,0,0,0.1); 
-  transition: transform 0.2s; 
+  background: var(--card-bg);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px var(--shadow-color);
+  transition: transform 0.3s, box-shadow 0.3s;
 }
-.gallery-item:hover { transform:scale(1.03); }
+
+.gallery-item:hover { 
+  transform: translateY(-5px) scale(1.03); 
+  box-shadow: 0 12px 28px var(--shadow-color);
+}
+
 .gallery-item img, .gallery-item video { 
   width:100%; 
   height:220px; 
   object-fit:cover; 
   opacity:0; 
   transition:opacity .3s; 
+  border-bottom-left-radius:20px;
+  border-bottom-right-radius:20px;
 }
 
 .loading { display:none; margin-top:1rem; color:var(--main-color); font-weight:bold; }
-.footer { margin:2rem 0 4rem; color:#666; }
+.footer { margin:2rem 0 4rem; color:#aaa; font-size:0.9rem; }
 
 /* === 4 POR FILA EN MOBILE === */
 @media (max-width: 600px) {
@@ -77,12 +93,14 @@ header {
   border-radius: 50px;
   border: none;
   font-size: 1rem;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.4);
   cursor: pointer;
   z-index: 9999;
+  transition: background 0.3s, transform 0.2s;
 }
 #addButton:hover {
   background: #27ae60;
+  transform: translateX(-50%) scale(1.05);
 }
 
 /* === PREVIEW (LIGHTBOX) === */
@@ -92,7 +110,7 @@ header {
   left:0;
   width:100%;
   height:100%;
-  background: rgba(0,0,0,0.85);
+  background: rgba(0,0,0,0.95);
   display:none;
   justify-content:center;
   align-items:center;
@@ -102,13 +120,15 @@ header {
 #previewContent {
   max-width: 90%;
   max-height: 85%;
+  border-radius: 20px;
+  overflow: hidden;
 }
 
 #previewContent img,
 #previewContent video {
   width: 100%;
   height: auto;
-  border-radius: 10px;
+  border-radius: 20px;
 }
 
 #closePreview {
@@ -126,20 +146,14 @@ header {
 <header>📸 Álbum de Recuerdos</header>
 
 <div class="container">
-  <!-- MULTI UPLOAD -->
   <input type="file" id="fileInput" accept="image/*,video/*" multiple style="display:none;">
-
   <div class="loading" id="loading">Cargando...</div>
-
   <div class="gallery mobile-grid" id="gallery"></div>
-
   <div class="footer" id="footerInfo"></div>
 </div>
 
-<!-- BOTÓN CENTRADO -->
 <button id="addButton">Agregar Recuerdo</button>
 
-<!-- PREVIEW -->
 <div id="previewOverlay">
   <span id="closePreview">✖</span>
   <div id="previewContent"></div>
@@ -148,21 +162,19 @@ header {
 <footer style="text-align:center;padding:1rem 0 3rem;color:#888;">Hecho con 💚</footer>
 
 <script>
-/* ======== CONFIG ======== */
-const WORKER_URL = 'https://lively-bush-fa83.jeastinls02.workers.dev/'; // <-- Cambiado a tu Worker
+// === Tu JavaScript se mantiene intacto ===
+// Solo recuerda apuntar a tu Worker si quieres cargar desde allí
+const WORKER_URL = 'https://lively-bush-fa83.jeastinls02.workers.dev/';
 const FOLDER = 'moments';
 const RESOURCE_TYPE = 'all';
 const PAGE_SIZE = 30;
 
-/* ======== ESTADO ======== */
 let resources = [];
 let index = 0;
-
 const gallery = document.getElementById('gallery');
 const loading = document.getElementById('loading');
 const footerInfo = document.getElementById('footerInfo');
 
-/* === OBSERVER PARA IMÁGENES === */
 const imgObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -174,16 +186,13 @@ const imgObserver = new IntersectionObserver((entries) => {
   });
 });
 
-/* === PREVIEW LIGHTBOX === */
 const previewOverlay = document.getElementById("previewOverlay");
 const previewContent = document.getElementById("previewContent");
 const closePreview = document.getElementById("closePreview");
-
 closePreview.onclick = () => { previewOverlay.style.display = "none"; };
 
 function openPreview(url, type) {
   previewContent.innerHTML = "";
-
   if (type === "video") {
     const v = document.createElement("video");
     v.src = url;
@@ -195,53 +204,38 @@ function openPreview(url, type) {
     img.src = url;
     previewContent.appendChild(img);
   }
-
   previewOverlay.style.display = "flex";
 }
 
-/* === RENDER === */
+// Renderizado y fetch se mantienen igual que tu código original
 function renderItem(r) {
   const div = document.createElement('div');
   div.className = 'gallery-item';
-
   const url = r.secure_url || r.url || '';
   if (!url) return;
-
   const cloudName = "dvyf7rti4";
   const publicId = r.public_id;
 
-  /* === VIDEO === */
   if ((r.resource_type === 'video') || url.match(/\.(mp4|mov|webm)$/i)) {
-
     const poster = `https://res.cloudinary.com/${cloudName}/video/upload/q_10,w_300,h_200,c_fill/${publicId}.jpg`;
-
     const v = document.createElement('video');
     v.controls = false;
     v.preload = 'none';
     v.dataset.src = url;
     v.poster = poster;
     v.style.opacity = "1";
-
     v.addEventListener('click', () => openPreview(url, "video"));
-
     div.appendChild(v);
-  }
-
-  /* === IMAGEN === */
-  else {
+  } else {
     const optimized = url.replace('/upload/', '/upload/f_auto,q_auto,w_600/');
-
     const img = document.createElement('img');
     img.dataset.src = optimized;
     img.alt = r.public_id;
     img.style.cursor = "pointer";
-
     img.addEventListener("click", () => openPreview(url, "image"));
-
     imgObserver.observe(img);
     div.appendChild(img);
   }
-
   gallery.appendChild(div);
 }
 
@@ -257,33 +251,27 @@ window.addEventListener('scroll', () => {
   }
 });
 
-/* === FETCH PRINCIPAL === */
 async function fetchResources() {
   loading.style.display = 'block';
   gallery.innerHTML = '';
   footerInfo.textContent = '';
-
   const url = new URL(WORKER_URL);
   url.searchParams.set('folder', FOLDER);
   url.searchParams.set('resource_type', RESOURCE_TYPE);
-
   try {
     const res = await fetch(url.toString());
     const js = await res.json();
-
     resources = js.resources || [];
     footerInfo.textContent = `Recursos: ${resources.length}`;
-
     index = 0;
     renderNextPage();
   } catch (err) {
     gallery.innerHTML = '<p>Error cargando recursos.</p>';
   }
-
   loading.style.display = 'none';
 }
 
-/* === UPLOAD MULTIPLE === */
+// Upload y resto del JS se mantiene igual
 const CLOUD_NAME = 'dvyf7rti4';
 const UPLOAD_PRESET = 'evory-moments';
 const fileInput = document.getElementById('fileInput');
@@ -294,22 +282,17 @@ addButton.onclick = () => fileInput.click();
 fileInput.onchange = async (e) => {
   const files = Array.from(e.target.files);
   if (files.length === 0) return;
-
   loading.style.display = 'block';
-
   for (const file of files) {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('upload_preset', UPLOAD_PRESET);
     fd.append('folder', FOLDER);
-
     const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { 
       method:'POST', 
       body:fd 
     });
-
     const data = await resp.json();
-
     if (data.secure_url) {
       resources.unshift({
         secure_url: data.secure_url,
@@ -318,17 +301,15 @@ fileInput.onchange = async (e) => {
       });
     }
   }
-
   gallery.innerHTML = '';
   index = 0;
   renderNextPage();
   footerInfo.textContent = `Recursos: ${resources.length}`;
-
   loading.style.display = 'none';
   fileInput.value = '';
 };
 
-/* === START === */
+// Start
 fetchResources();
 </script>
 </body>
