@@ -69,10 +69,19 @@ header {
   top:50%;
   left:50%;
   transform: translate(-50%, -50%);
-  font-size:50px;
-  color:white;
+  width:60px;
+  height:60px;
+  background: rgba(255,255,255,0.6);
+  clip-path: polygon(25% 20%, 25% 80%, 80% 50%);
   pointer-events:none;
-  text-shadow: 0 0 10px black;
+  z-index:2;
+}
+
+@media (min-width: 601px){
+  .play-icon {
+    width:70px;
+    height:70px;
+  }
 }
 
 .loading { display:none; margin-top:1rem; color:var(--main-color); font-weight:bold; }
@@ -104,7 +113,6 @@ header {
   box-shadow: 0 6px 16px rgba(0,0,0,0.4);
   cursor: pointer;
   z-index: 9999;
-  width: 75%;
 }
 
 #addButton:hover {
@@ -184,7 +192,7 @@ header {
   <span id="nextBtn">❯</span>
 </div>
 
-<footer style="text-align:center;padding:1rem 0 1.5rem;color:#888;">Hecho con 💚</footer>
+<footer style="text-align:center;padding:1rem 0 3rem;color:#888;">Hecho con 💚</footer>
 
 <script>
 const WORKER_URL = 'https://lively-bush-fa83.jeastinls02.workers.dev/';
@@ -283,7 +291,6 @@ function renderItem(r, idx) {
     img.dataset.src = poster;
     const playIcon = document.createElement('div');
     playIcon.className = 'play-icon';
-    playIcon.innerHTML = '▶';
     div.appendChild(playIcon);
   } else {
     img.dataset.src = url.replace('/upload/', '/upload/f_auto,q_auto,w_600/');
