@@ -29,26 +29,24 @@ body.preview-open {
   overflow: hidden;
 }
 
-/* HEADER FIJO */
 header { 
+  background: var(--main-color); 
+  color:white; 
+  padding:1rem 1.2rem; 
+  font-size:1.6rem; 
+  font-weight:600; 
+  box-shadow:0 2px 6px rgba(0,0,0,0.2); 
   position: fixed;
   top:0;
   left:0;
   width:100%;
-  background: var(--main-color); 
-  color:white; 
-  padding:1.2rem; 
-  font-size:1.6rem; 
-  font-weight:600; 
-  box-shadow:0 2px 6px rgba(0,0,0,0.2); 
   z-index: 1000;
 }
 
-/* AGREGAMOS PADDING SUPERIOR PARA NO QUEDAR DETRÁS DEL HEADER */
 .container { 
   max-width:1000px; 
-  margin:0 auto; 
-  padding: 6rem 0 1rem 0; /* espacio superior igual al header */
+  margin:5rem auto 1rem; 
+  padding:0 0; 
 }
 
 .gallery { 
@@ -63,7 +61,7 @@ header {
   box-shadow: 0 4px 12px var(--shadow-color);
   position: relative;
   transition: transform 0.3s, box-shadow 0.3s;
-  aspect-ratio: 1/1; /* cuadrado */
+  aspect-ratio: 1/1;
 }
 
 .gallery-item:hover { 
@@ -101,9 +99,16 @@ header {
     grid-template-columns: repeat(5, 1fr) !important;
     gap: 2px;
   }
+  .gallery-item {
+    width: 100%;
+    aspect-ratio: 1/1;
+  }
+  .gallery.mobile-grid .gallery-item img,
+  .gallery.mobile-grid .gallery-item video {
+    height: 100% !important;
+  }
 }
 
-/* BOTÓN FIJO ABAJO, ALTURA REDUCIDA */
 #addButton {
   position: fixed;
   bottom: 20px;
@@ -112,13 +117,13 @@ header {
   background: var(--main-color);
   color: white;
   font-weight: 600;
-  padding: 0.7rem 1.4rem; /* altura reducida */
+  padding: 0.7rem 1.2rem;
   border-radius: 50px;
   border: none;
-  font-size: 1rem;
+  font-size: 0.95rem;
   box-shadow: 0 6px 16px rgba(0,0,0,0.3);
   cursor: pointer;
-  z-index: 9999;
+  z-index: 999;
   width: 70%;
 }
 
@@ -127,7 +132,6 @@ header {
   transform: translateX(-50%) scale(1.05);
 }
 
-/* OVERLAY DE PREVIEW */
 #previewOverlay {
   position: fixed;
   top:0;
@@ -138,7 +142,7 @@ header {
   display:none;
   justify-content:center;
   align-items:center;
-  z-index: 99999;
+  z-index: 10000;
 }
 
 #previewContent {
@@ -182,7 +186,7 @@ header {
 </head>
 <body>
 
-<header>📸 Mis XV - Camila AA</header>
+<header>📸 Álbum de Recuerdos</header>
 
 <div class="container">
   <input type="file" id="fileInput" accept="image/*,video/*" multiple style="display:none;">
@@ -215,6 +219,7 @@ let currentPreviewIndex = 0;
 const gallery = document.getElementById('gallery');
 const loading = document.getElementById('loading');
 const footerInfo = document.getElementById('footerInfo');
+const addButton = document.getElementById('addButton');
 
 const imgObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
@@ -236,28 +241,49 @@ const nextBtn = document.getElementById("nextBtn");
 closePreview.onclick = () => {
   previewOverlay.style.display = "none";
   document.body.classList.remove('preview-open');
+  addButton.disabled = false;
   const v = previewContent.querySelector("video");
   if(v) { v.pause(); v.src=""; }
   previewContent.innerHTML = "";
 };
 
-function openPreview(index) {
-  currentPreviewIndex = index;
+function preloadResource(idx) {
+  if(idx < 0 || idx >= resources.length) return;
+  const r = resources[idx];
+  if(r.resource_type === 'video') {
+    const video = document.createElement('video');
+    video.src = r.secure_url;
+    video.preload = 'auto';
+    video.muted = true;
+  } else {
+    const img = new Image();
+    img.src = r.secure_url;
+  }
+}
+
+function openPreview(idx) {
+  currentPreviewIndex = idx;
   const r = resources[currentPreviewIndex];
   previewContent.innerHTML = "";
   document.body.classList.add('preview-open');
+  addButton.disabled = true;
 
   if(r.resource_type === "video") {
     const v = document.createElement("video");
     v.src = r.secure_url;
     v.controls = true;
     v.autoplay = true;
+    v.preload = 'auto';
     previewContent.appendChild(v);
   } else {
     const img = document.createElement("img");
-    img.src = r.secure_url;
+    img.src = r.secure_url.replace('/upload/', '/upload/f_auto,q_auto,w_600/');
     previewContent.appendChild(img);
   }
+
+  // Preload previous and next
+  preloadResource(currentPreviewIndex + 1);
+  preloadResource(currentPreviewIndex - 1);
 
   previewOverlay.style.display = "flex";
 }
@@ -265,11 +291,9 @@ function openPreview(index) {
 function showPrev() {
   if(currentPreviewIndex > 0) openPreview(--currentPreviewIndex);
 }
-
 function showNext() {
   if(currentPreviewIndex < resources.length -1) openPreview(++currentPreviewIndex);
 }
-
 prevBtn.onclick = showPrev;
 nextBtn.onclick = showNext;
 
@@ -320,7 +344,7 @@ function renderNextPage() {
 }
 
 window.addEventListener('scroll', () => {
-  if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 150){
+  if(!document.body.classList.contains('preview-open') && window.innerHeight + window.scrollY >= document.body.offsetHeight - 150){
     if(index < resources.length) renderNextPage();
   }
 });
@@ -350,7 +374,6 @@ async function fetchResources() {
 const CLOUD_NAME = 'dvyf7rti4';
 const UPLOAD_PRESET = 'evory-moments';
 const fileInput = document.getElementById('fileInput');
-const addButton = document.getElementById('addButton');
 
 addButton.onclick = () => fileInput.click();
 
