@@ -64,7 +64,7 @@ header {
   }
 }
 
-/* === BOTÓN FLOTANTE CENTRADO ABAJO === */
+/* === BOTÓN CENTRADO ABAJO === */
 #addButton {
   position: fixed;
   bottom: 20px;
@@ -73,11 +73,11 @@ header {
   background: var(--main-color);
   color: white;
   font-weight: 600;
-  padding: 0.9rem 1.6rem;
+  padding: 1rem 1.4rem;
   border-radius: 50px;
   border: none;
   font-size: 1rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
   cursor: pointer;
   z-index: 9999;
 }
@@ -99,18 +99,9 @@ header {
   z-index: 99999;
 }
 
-#previewWrapper {
-  max-width: 95%;
-  max-height: 90%;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 #previewContent {
-  max-width: 100%;
-  max-height: 100%;
+  max-width: 90%;
+  max-height: 85%;
 }
 
 #previewContent img,
@@ -118,19 +109,15 @@ header {
   width: 100%;
   height: auto;
   border-radius: 10px;
-  display: block;
-  max-height: 90vh;
 }
 
 #closePreview {
   position:absolute;
-  top:14px;
-  right:14px;
-  font-size:28px;
+  top:20px;
+  right:20px;
+  font-size:30px;
   color:white;
   cursor:pointer;
-  z-index: 100000;
-  user-select: none;
 }
 </style>
 </head>
@@ -139,7 +126,9 @@ header {
 <header>📸 Álbum de Recuerdos</header>
 
 <div class="container">
-  <input type="file" id="fileInput" accept="image/*,video/*" style="display:none;">
+  <!-- MULTI UPLOAD -->
+  <input type="file" id="fileInput" accept="image/*,video/*" multiple style="display:none;">
+
   <div class="loading" id="loading">Cargando...</div>
 
   <div class="gallery mobile-grid" id="gallery"></div>
@@ -151,11 +140,9 @@ header {
 <button id="addButton">Agregar Recuerdo</button>
 
 <!-- PREVIEW -->
-<div id="previewOverlay" aria-hidden="true">
-  <div id="previewWrapper" role="dialog" aria-modal="true">
-    <span id="closePreview" aria-label="Cerrar">✖</span>
-    <div id="previewContent"></div>
-  </div>
+<div id="previewOverlay">
+  <span id="closePreview">✖</span>
+  <div id="previewContent"></div>
 </div>
 
 <footer style="text-align:center;padding:1rem 0 3rem;color:#888;">Hecho con 💚</footer>
@@ -166,7 +153,6 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwh9182ZGUHoCx4
 const FOLDER = 'moments';
 const RESOURCE_TYPE = 'all';
 const PAGE_SIZE = 30;
-const CLOUD_NAME = 'dvyf7rti4'; // tu cloud name
 
 /* ======== ESTADO ======== */
 let resources = [];
@@ -175,10 +161,8 @@ let index = 0;
 const gallery = document.getElementById('gallery');
 const loading = document.getElementById('loading');
 const footerInfo = document.getElementById('footerInfo');
-const addButton = document.getElementById('addButton');
-const fileInput = document.getElementById('fileInput');
 
-/* === OBSERVER PARA IMÁGENES (lazy) === */
+/* === OBSERVER PARA IMÁGENES === */
 const imgObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -188,109 +172,33 @@ const imgObserver = new IntersectionObserver((entries) => {
       imgObserver.unobserve(el);
     }
   });
-}, { rootMargin: '200px 0px' }); // prefetch un poco antes de entrar
+});
 
-/* === PREVIEW LIGHTBOX Y CACHE PROGRESIVA === */
+/* === PREVIEW LIGHTBOX === */
 const previewOverlay = document.getElementById("previewOverlay");
 const previewContent = document.getElementById("previewContent");
 const closePreview = document.getElementById("closePreview");
 
-closePreview.addEventListener('click', closePreviewFn);
-previewOverlay.addEventListener('click', (e) => {
-  if (e.target === previewOverlay) closePreviewFn();
-});
+closePreview.onclick = () => { previewOverlay.style.display = "none"; };
 
-function closePreviewFn() {
-  // detener y limpiar video si existe
-  const vid = previewContent.querySelector('video');
-  if (vid) {
-    try { vid.pause(); } catch(e) {}
-    vid.removeAttribute('src');
-    vid.load && vid.load();
-  }
-  previewContent.innerHTML = '';
-  previewOverlay.style.display = 'none';
-  previewOverlay.setAttribute('aria-hidden','true');
-}
+function openPreview(url, type) {
+  previewContent.innerHTML = "";
 
-/**
- * openPreview: muestra IMAGEN o VIDEO *rápido*.
- * Para imágenes: muestra INMEDIATAMENTE la miniatura (thumb) y luego carga en background la versión mayor (progressive swap).
- * Para videos: muestra el poster en el modal; NO descarga el archivo hasta que el usuario presione play.
- *
- * params:
- *   opts.thumb -> URL de miniatura ya cargada (rápida)
- *   opts.full  -> URL optimizada de mayor resolución (para reemplazo en imagen)
- *   opts.type  -> "image"|"video"
- *   opts.videoPoster -> (videos) poster url
- *   opts.videoFull -> (videos) url real (no se asigna hasta play)
- */
-function openPreview(opts = {}) {
-  previewContent.innerHTML = '';
-  previewOverlay.style.display = 'flex';
-  previewOverlay.setAttribute('aria-hidden','false');
-
-  if (opts.type === 'video') {
-    // Show poster immediately (image inside modal) and create video element that will only set src on play
-    const posterImg = document.createElement('img');
-    posterImg.src = opts.videoPoster || opts.thumb || '';
-    posterImg.alt = 'video poster';
-    posterImg.style.maxHeight = '80vh';
-    previewContent.appendChild(posterImg);
-
-    // Create video element but without src to avoid download
-    const v = document.createElement('video');
+  if (type === "video") {
+    const v = document.createElement("video");
+    v.src = url;
     v.controls = true;
-    v.style.display = 'none';
-    v.style.maxHeight = '80vh';
-    v.playsInline = true;
-
-    // When user presses play, set src and swap (or replace)
-    v.addEventListener('play', function onFirstPlay() {
-      if (!v.src) {
-        v.src = opts.videoFull || opts.full || '';
-        // after we set src, remove poster image and show the video
-        v.style.display = 'block';
-        if (posterImg && posterImg.parentNode) posterImg.remove();
-      }
-      v.removeEventListener('play', onFirstPlay);
-    }, { once: true });
-
-    // also allow user to click poster to show the video player and set src when they click poster
-    posterImg.addEventListener('click', () => {
-      if (!v.src) {
-        v.src = opts.videoFull || opts.full || '';
-        if (posterImg && posterImg.parentNode) posterImg.remove();
-      }
-      v.style.display = 'block';
-      v.play().catch(()=>{}); // ignore play promise errors in some browsers
-    });
-
+    v.autoplay = true;
     previewContent.appendChild(v);
-    return;
+  } else {
+    const img = document.createElement("img");
+    img.src = url;
+    previewContent.appendChild(img);
   }
 
-  // IMAGE: rapid progressive preview
-  const thumb = document.createElement('img');
-  thumb.src = opts.thumb || opts.full || '';
-  thumb.alt = 'preview';
-  previewContent.appendChild(thumb);
-
-  // start loading high-res optimized image in background; when ready, swap
-  if (opts.full && opts.full !== opts.thumb) {
-    const hi = new Image();
-    hi.decoding = 'async';
-    hi.src = opts.full;
-    hi.onload = () => {
-      // replace thumb with hi-res smoothly
-      try {
-        thumb.src = hi.src;
-      } catch (e) {
-        // fallback: do nothing
-      }
-    };
-  }
+  previewOverlay.style.display = "flex";
 }
+
 
 /* === RENDER === */
 function renderItem(r) {
@@ -300,54 +208,36 @@ function renderItem(r) {
   const url = r.secure_url || r.url || '';
   if (!url) return;
 
-  const publicId = r.public_id || '';
+  const cloudName = "dvyf7rti4";
+  const publicId = r.public_id;
 
   /* === VIDEO === */
   if ((r.resource_type === 'video') || url.match(/\.(mp4|mov|webm)$/i)) {
 
-    // poster tiny for grid & preview initial (very low q)
-    const posterThumb = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload/q_10,w_300/${publicId}.jpg`;
-    // in-grid we use poster image (video tag will show poster)
+    const poster = `https://res.cloudinary.com/${cloudName}/video/upload/q_10,w_300,h_200,c_fill/${publicId}.jpg`;
+
     const v = document.createElement('video');
     v.controls = false;
     v.preload = 'none';
-    v.dataset.full = url; // real video url
-    v.poster = posterThumb;
+    v.dataset.src = url;
+    v.poster = poster;
     v.style.opacity = "1";
-    v.loading = 'lazy';
 
-    // clicking opens preview with poster first; video src will not be assigned until user interacts in modal
-    v.addEventListener('click', () => {
-      openPreview({
-        type: 'video',
-        videoPoster: posterThumb,
-        videoFull: url
-      });
-    });
+    v.addEventListener('click', () => openPreview(url, "video"));
 
-    // Show poster quickly — set a tiny thumbnail as background by inserting an img behind the video for faster perceived speed
-    // We'll append video directly; browser will render poster.
     div.appendChild(v);
   }
 
   /* === IMAGEN === */
   else {
-    // thumb used in grid (fast) and preview immediate; fullPreview is progressive larger version
-    const thumbOptimized = url.replace('/upload/', '/upload/f_auto,q_auto,w_600/');
-    const fullPreview = url.replace('/upload/', '/upload/f_auto,q_auto,w_1200/');
+    const optimized = url.replace('/upload/', '/upload/f_auto,q_auto,w_600/');
 
     const img = document.createElement('img');
-    img.dataset.src = thumbOptimized;   // lazy loading source
-    img.dataset.thumb = thumbOptimized; // quick preview immediate
-    img.dataset.full = fullPreview;     // hi-res progressive
-    img.alt = r.public_id || 'recuerdo';
+    img.dataset.src = optimized;
+    img.alt = r.public_id;
     img.style.cursor = "pointer";
-    img.loading = 'lazy';
-    img.addEventListener("click", (e) => {
-      // use immediate thumb if already loaded, otherwise fallback to dataset.thumb
-      const thumb = img.currentSrc || img.dataset.thumb || img.dataset.src || thumbOptimized;
-      openPreview({ type: 'image', thumb: thumb, full: img.dataset.full });
-    });
+
+    img.addEventListener("click", () => openPreview(url, "image"));
 
     imgObserver.observe(img);
     div.appendChild(img);
@@ -362,7 +252,6 @@ function renderNextPage() {
   index += PAGE_SIZE;
 }
 
-/* === SCROLL INFINITO === */
 window.addEventListener('scroll', () => {
   if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 150) {
     if (index < resources.length) renderNextPage();
@@ -380,8 +269,7 @@ async function fetchResources() {
   url.searchParams.set('resource_type', RESOURCE_TYPE);
 
   try {
-    const res = await fetch(url.toString(), { method: 'GET', credentials: 'omit' });
-    if (!res.ok) throw new Error('Fetch fallo ' + res.status);
+    const res = await fetch(url.toString());
     const js = await res.json();
 
     resources = js.resources || [];
@@ -390,31 +278,37 @@ async function fetchResources() {
     index = 0;
     renderNextPage();
   } catch (err) {
-    console.error(err);
     gallery.innerHTML = '<p>Error cargando recursos.</p>';
-  } finally {
-    loading.style.display = 'none';
   }
+
+  loading.style.display = 'none';
 }
 
-/* === UPLOAD (sin cambios, botón centrado atado al input) === */
+/* === UPLOAD MULTIPLE === */
+const CLOUD_NAME = 'dvyf7rti4';
 const UPLOAD_PRESET = 'evory-moments';
+const fileInput = document.getElementById('fileInput');
+const addButton = document.getElementById('addButton');
 
 addButton.onclick = () => fileInput.click();
 
 fileInput.onchange = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+  const files = Array.from(e.target.files);
+  if (files.length === 0) return;
 
   loading.style.display = 'block';
 
-  const fd = new FormData();
-  fd.append('file', file);
-  fd.append('upload_preset', UPLOAD_PRESET);
-  fd.append('folder', FOLDER);
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', UPLOAD_PRESET);
+    fd.append('folder', FOLDER);
 
-  try {
-    const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method:'POST', body:fd });
+    const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { 
+      method:'POST', 
+      body:fd 
+    });
+
     const data = await resp.json();
 
     if (data.secure_url) {
@@ -423,22 +317,16 @@ fileInput.onchange = async (e) => {
         resource_type: data.resource_type,
         public_id: data.public_id
       });
-
-      gallery.innerHTML = '';
-      index = 0;
-      renderNextPage();
-      footerInfo.textContent = `Recursos: ${resources.length}`;
-    } else {
-      console.error('Upload error', data);
-      alert('Error al subir archivo');
     }
-  } catch (e) {
-    console.error(e);
-    alert('Error al subir archivo');
-  } finally {
-    loading.style.display = 'none';
-    fileInput.value = '';
   }
+
+  gallery.innerHTML = '';
+  index = 0;
+  renderNextPage();
+  footerInfo.textContent = `Recursos: ${resources.length}`;
+
+  loading.style.display = 'none';
+  fileInput.value = '';
 };
 
 /* === START === */
