@@ -292,7 +292,7 @@ function openPreview(index) {
 
   // Botón de descarga solo en preview, flotante y centrado
   const downloadBtn = document.createElement('button');
-  downloadBtn.textContent = 'Descargar ⬇';
+  downloadBtn.textContent = 'Descargar';
   downloadBtn.style.position = 'fixed';
   downloadBtn.style.bottom = '20px';
   downloadBtn.style.left = '50%';
@@ -307,25 +307,34 @@ function openPreview(index) {
   downloadBtn.style.zIndex = '10000';
   downloadBtn.style.width = '70%';
 
-  downloadBtn.onclick = async () => {
-    downloadBtn.disabled = true;
-    downloadBtn.textContent = 'Descargando... ⏳';
-    const r = resources[index];
-    const url = r.secure_url;
-    const isVideo = (r.resource_type === 'video') || url.match(/\.(mp4|mov|webm)$/i);
-    try {
-      const a = document.createElement('a');
-      a.href = url; // URL original de Cloudinary
-      a.download = r.public_id + (isVideo ? '.mp4' : '.jpg');
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch(err) {
-      console.error(err);
-    }
-    downloadBtn.textContent = '⬇ Descargar';
-    downloadBtn.disabled = false;
-  };
+ downloadBtn.onclick = async () => {
+  downloadBtn.disabled = true;
+  downloadBtn.textContent = 'Descargando... ⏳';
+  const r = resources[index];
+  const url = r.secure_url;
+  const isVideo = (r.resource_type === 'video') || url.match(/\.(mp4|mov|webm)$/i);
+  try {
+    // Descarga como Blob
+    const blob = await fetch(url).then(res => res.blob());
+
+    // Para móviles, usar URL.createObjectURL + a.download
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = r.public_id + (isVideo ? '.mp4' : '.jpg');
+
+    // Esto asegura que en móviles se guarde
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+
+  } catch(err) {
+    console.error(err);
+  }
+  downloadBtn.textContent = 'Descargar';
+  downloadBtn.disabled = false;
+};
+
 
   previewContent.appendChild(downloadBtn);
   previewOverlay.style.display = "flex";
