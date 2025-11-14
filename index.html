@@ -149,7 +149,7 @@ header {
 
 <script>
 /* ======== CONFIG ======== */
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwh9182ZGUHoCx49D-txEuQdtHe-QgBVsZOOhO7tIy8MRrZWGWPAc58lnPuUMylhhhKLg/exec';
+const WORKER_URL = 'https://lively-bush-fa83.jeastinls02.workers.dev/'; // <--- REEMPLAZA CON TU WORKER
 const FOLDER = 'moments';
 const RESOURCE_TYPE = 'all';
 const PAGE_SIZE = 30;
@@ -199,7 +199,6 @@ function openPreview(url, type) {
   previewOverlay.style.display = "flex";
 }
 
-
 /* === RENDER === */
 function renderItem(r) {
   const div = document.createElement('div');
@@ -208,37 +207,29 @@ function renderItem(r) {
   const url = r.secure_url || r.url || '';
   if (!url) return;
 
-  const cloudName = "dvyf7rti4";
+  const cloudName = "dvyf7rti4"; // tu cloud name
   const publicId = r.public_id;
 
   /* === VIDEO === */
   if ((r.resource_type === 'video') || url.match(/\.(mp4|mov|webm)$/i)) {
-
     const poster = `https://res.cloudinary.com/${cloudName}/video/upload/q_10,w_300,h_200,c_fill/${publicId}.jpg`;
-
     const v = document.createElement('video');
     v.controls = false;
     v.preload = 'none';
     v.dataset.src = url;
     v.poster = poster;
     v.style.opacity = "1";
-
     v.addEventListener('click', () => openPreview(url, "video"));
-
     div.appendChild(v);
   }
-
   /* === IMAGEN === */
   else {
     const optimized = url.replace('/upload/', '/upload/f_auto,q_auto,w_600/');
-
     const img = document.createElement('img');
     img.dataset.src = optimized;
     img.alt = r.public_id;
     img.style.cursor = "pointer";
-
     img.addEventListener("click", () => openPreview(url, "image"));
-
     imgObserver.observe(img);
     div.appendChild(img);
   }
@@ -264,7 +255,7 @@ async function fetchResources() {
   gallery.innerHTML = '';
   footerInfo.textContent = '';
 
-  const url = new URL(APPS_SCRIPT_URL);
+  const url = new URL(WORKER_URL);
   url.searchParams.set('folder', FOLDER);
   url.searchParams.set('resource_type', RESOURCE_TYPE);
 
@@ -279,13 +270,14 @@ async function fetchResources() {
     renderNextPage();
   } catch (err) {
     gallery.innerHTML = '<p>Error cargando recursos.</p>';
+    console.error(err);
   }
 
   loading.style.display = 'none';
 }
 
 /* === UPLOAD MULTIPLE === */
-const CLOUD_NAME = 'dvyf7rti4';
+const CLOUD_NAME = 'dvyf7ti4';
 const UPLOAD_PRESET = 'evory-moments';
 const fileInput = document.getElementById('fileInput');
 const addButton = document.getElementById('addButton');
