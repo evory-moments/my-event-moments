@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Álbum de Recuerdos</title>
 <link rel="icon" type="image/png" href="https://i.postimg.cc/hvt9n3XN/icon-album.png">
-
-
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Corinthia:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
@@ -31,16 +29,27 @@ body.preview-open {
   overflow: hidden;
 }
 
+/* HEADER FIJO */
 header { 
+  position: fixed;
+  top:0;
+  left:0;
+  width:100%;
   background: var(--main-color); 
   color:white; 
   padding:1.2rem; 
   font-size:1.6rem; 
   font-weight:600; 
   box-shadow:0 2px 6px rgba(0,0,0,0.2); 
+  z-index: 1000;
 }
 
-.container { max-width:1000px; margin:1rem auto; padding:0 0; }
+/* AGREGAMOS PADDING SUPERIOR PARA NO QUEDAR DETRÁS DEL HEADER */
+.container { 
+  max-width:1000px; 
+  margin:0 auto; 
+  padding: 6rem 0 1rem 0; /* espacio superior igual al header */
+}
 
 .gallery { 
   display:grid; 
@@ -92,16 +101,9 @@ header {
     grid-template-columns: repeat(5, 1fr) !important;
     gap: 2px;
   }
-  .gallery-item {
-  width: 100%;
-  aspect-ratio: 1/1; /* cuadrado */
-}
-  .gallery.mobile-grid .gallery-item img,
-  .gallery.mobile-grid .gallery-item video {
-    height: 100% !important;
-  }
 }
 
+/* BOTÓN FIJO ABAJO, ALTURA REDUCIDA */
 #addButton {
   position: fixed;
   bottom: 20px;
@@ -110,7 +112,7 @@ header {
   background: var(--main-color);
   color: white;
   font-weight: 600;
-  padding: 0.7rem 1.4rem; /* menos altura */
+  padding: 0.7rem 1.4rem; /* altura reducida */
   border-radius: 50px;
   border: none;
   font-size: 1rem;
@@ -125,7 +127,7 @@ header {
   transform: translateX(-50%) scale(1.05);
 }
 
-
+/* OVERLAY DE PREVIEW */
 #previewOverlay {
   position: fixed;
   top:0;
