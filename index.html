@@ -4,7 +4,10 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Álbum de Recuerdos</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="https://i.postimg.cc/hvt9n3XN/icon-album.png">
+
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Corinthia:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
 :root {
@@ -16,7 +19,7 @@
 }
 
 body { 
-  font-family: 'Poppins', sans-serif; 
+  font-family: "Corinthia", cursive;
   margin:0; 
   padding:0; 
   background: var(--bg-color); 
@@ -51,6 +54,7 @@ header {
   box-shadow: 0 4px 12px var(--shadow-color);
   position: relative;
   transition: transform 0.3s, box-shadow 0.3s;
+  aspect-ratio: 1/1; /* cuadrado */
 }
 
 .gallery-item:hover { 
@@ -60,7 +64,7 @@ header {
 
 .gallery-item img, .gallery-item video { 
   width: 100%; 
-  height: 70%; 
+  height: 100%; 
   object-fit: cover; 
   opacity: 0; 
   transition: opacity .3s; 
@@ -81,16 +85,20 @@ header {
 }
 
 .loading { display:none; margin-top:1rem; color:var(--main-color); font-weight:bold; }
-.footer { margin:2rem 0 4rem; color:#666; font-size:0.9rem; }
+.footer { margin:4rem 0 1rem; color:#666; font-size:0.9rem; }
 
 @media (max-width: 600px) {
   .gallery.mobile-grid {
     grid-template-columns: repeat(5, 1fr) !important;
-    gap: 4px;
+    gap: 2px;
   }
+  .gallery-item {
+  width: 100%;
+  aspect-ratio: 1/1; /* cuadrado */
+}
   .gallery.mobile-grid .gallery-item img,
   .gallery.mobile-grid .gallery-item video {
-    height: 100px !important;
+    height: 100% !important;
   }
 }
 
@@ -102,19 +110,21 @@ header {
   background: var(--main-color);
   color: white;
   font-weight: 600;
-  padding: 1rem 1.4rem;
+  padding: 0.7rem 1.4rem; /* menos altura */
   border-radius: 50px;
   border: none;
   font-size: 1rem;
   box-shadow: 0 6px 16px rgba(0,0,0,0.3);
   cursor: pointer;
   z-index: 9999;
+  width: 70%;
 }
 
 #addButton:hover {
   background: #27ae60;
   transform: translateX(-50%) scale(1.05);
 }
+
 
 #previewOverlay {
   position: fixed;
@@ -170,7 +180,7 @@ header {
 </head>
 <body>
 
-<header>📸 Álbum de Recuerdos</header>
+<header>📸 Mis XV - Camila AA</header>
 
 <div class="container">
   <input type="file" id="fileInput" accept="image/*,video/*" multiple style="display:none;">
@@ -188,13 +198,13 @@ header {
   <span id="nextBtn">❯</span>
 </div>
 
-<footer style="text-align:center;padding:1rem 0 3rem;color:#888;">Hecho con 💚</footer>
+<footer style="text-align:center;color:#888;">Hecho con 💚</footer>
 
 <script>
 const WORKER_URL = 'https://lively-bush-fa83.jeastinls02.workers.dev/';
 const FOLDER = 'moments';
 const RESOURCE_TYPE = 'all';
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 50;
 
 let resources = [];
 let index = 0;
