@@ -24,6 +24,10 @@ body {
   text-align:center; 
 }
 
+body.preview-open {
+  overflow: hidden;
+}
+
 header { 
   background: var(--main-color); 
   color:white; 
@@ -57,11 +61,12 @@ header {
 }
 
 .gallery-item img, .gallery-item video { 
-  width:100%; 
-  height:220px; 
-  object-fit:cover; 
-  opacity:0; 
-  transition:opacity .3s; 
+  width: 100%; 
+  height: 220px; 
+  object-fit: cover; 
+  opacity: 0; 
+  transition: opacity .3s; 
+  image-rendering: auto;
 }
 
 .play-icon {
@@ -227,6 +232,7 @@ const nextBtn = document.getElementById("nextBtn");
 
 closePreview.onclick = () => {
   previewOverlay.style.display = "none";
+  document.body.classList.remove('preview-open');
   const v = previewContent.querySelector("video");
   if(v) { v.pause(); v.src=""; }
   previewContent.innerHTML = "";
@@ -236,6 +242,7 @@ function openPreview(index) {
   currentPreviewIndex = index;
   const r = resources[currentPreviewIndex];
   previewContent.innerHTML = "";
+  document.body.classList.add('preview-open');
 
   if(r.resource_type === "video") {
     const v = document.createElement("video");
@@ -287,7 +294,7 @@ function renderItem(r, idx) {
   const isVideo = (r.resource_type === 'video') || url.match(/\.(mp4|mov|webm)$/i);
   let img = document.createElement('img');
   if(isVideo) {
-    const poster = `https://res.cloudinary.com/dvyf7rti4/video/upload/q_10,w_300,h_200,c_fill/${r.public_id}.jpg`;
+    const poster = `https://res.cloudinary.com/dvyf7rti4/video/upload/q_auto,f_auto,w_600,h_400,c_fill/${r.public_id}.jpg`;
     img.dataset.src = poster;
     const playIcon = document.createElement('div');
     playIcon.className = 'play-icon';
