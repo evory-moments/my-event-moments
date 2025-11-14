@@ -25,7 +25,9 @@ body {
   text-align:center; 
 }
 
-body.preview-open { overflow: hidden; }
+body.preview-open {
+  overflow: hidden;
+}
 
 header { 
   background: var(--main-color); 
@@ -107,9 +109,14 @@ header {
     grid-template-columns: repeat(5, 1fr) !important;
     gap: 2px;
   }
-  .gallery-item { width: 100%; aspect-ratio: 1/1; }
+  .gallery-item {
+    width: 100%;
+    aspect-ratio: 1/1; 
+  }
   .gallery.mobile-grid .gallery-item img,
-  .gallery.mobile-grid .gallery-item video { height: 100% !important; }
+  .gallery.mobile-grid .gallery-item video {
+    height: 100% !important;
+  }
 }
 
 #addButton {
@@ -196,7 +203,12 @@ header {
   display: none;
 }
 
-.progress-bar { height: 100%; width: 0%; background: var(--main-color); transition: width 0.2s; }
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--main-color);
+  transition: width 0.2s;
+}
 </style>
 </head>
 <body>
@@ -251,8 +263,10 @@ const closePreview = document.getElementById("closePreview");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
 
+// Cache para preview rápido
 let previewCache = [];
 
+// Intersection Observer para cargar imágenes gradualmente
 const imgObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -264,8 +278,15 @@ const imgObserver = new IntersectionObserver((entries) => {
   });
 });
 
-function disableApp() { document.body.classList.add('preview-open'); addButton.disabled = true; }
-function enableApp() { document.body.classList.remove('preview-open'); addButton.disabled = false; }
+// ===== Funciones de Preview =====
+function disableApp() {
+  document.body.classList.add('preview-open');
+  addButton.disabled = true;
+}
+function enableApp() {
+  document.body.classList.remove('preview-open');
+  addButton.disabled = false;
+}
 
 closePreview.onclick = () => {
   previewOverlay.style.display = "none";
@@ -286,57 +307,13 @@ function openPreview(index) {
   const node = cachedNode.cloneNode(true);
   node.style.width = "100%";
   node.style.height = "auto";
-  if(node.tagName === "VIDEO") node.controls = true, node.autoplay = true;
+
+  if(node.tagName === "VIDEO") {
+    node.controls = true;
+    node.autoplay = true;
+  }
 
   previewContent.appendChild(node);
-
-  // Botón de descarga solo en preview, flotante y centrado
-  const downloadBtn = document.createElement('button');
-  downloadBtn.textContent = 'Descargar';
-  downloadBtn.style.position = 'fixed';
-  downloadBtn.style.bottom = '20px';
-  downloadBtn.style.left = '50%';
-  downloadBtn.style.transform = 'translateX(-50%)';
-  downloadBtn.style.padding = '12px 20px';
-  downloadBtn.style.fontSize = '1rem';
-  downloadBtn.style.border = 'none';
-  downloadBtn.style.borderRadius = '50px';
-  downloadBtn.style.background = 'var(--main-color)';
-  downloadBtn.style.color = 'white';
-  downloadBtn.style.cursor = 'pointer';
-  downloadBtn.style.zIndex = '10000';
-  downloadBtn.style.width = '70%';
-
- downloadBtn.onclick = async () => {
-  downloadBtn.disabled = true;
-  downloadBtn.textContent = 'Descargando... ⏳';
-  const r = resources[index];
-  const url = r.secure_url;
-  const isVideo = (r.resource_type === 'video') || url.match(/\.(mp4|mov|webm)$/i);
-  try {
-    // Descarga como Blob
-    const blob = await fetch(url).then(res => res.blob());
-
-    // Para móviles, usar URL.createObjectURL + a.download
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = r.public_id + (isVideo ? '.mp4' : '.jpg');
-
-    // Esto asegura que en móviles se guarde
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(a.href);
-
-  } catch(err) {
-    console.error(err);
-  }
-  downloadBtn.textContent = 'Descargar';
-  downloadBtn.disabled = false;
-};
-
-
-  previewContent.appendChild(downloadBtn);
   previewOverlay.style.display = "flex";
 }
 
@@ -360,6 +337,7 @@ previewOverlay.addEventListener('touchend', e=>{
   touchStartX = null;
 });
 
+// ===== Renderización de la galería con cache =====
 function renderItem(r, idx) {
   const div = document.createElement('div');
   div.className = 'gallery-item';
@@ -380,11 +358,13 @@ function renderItem(r, idx) {
     playIcon.className = 'play-icon';
     div.appendChild(playIcon);
 
+    // Pre-cargar video en memoria
     const videoNode = document.createElement('video');
     videoNode.src = r.secure_url;
     videoNode.preload = "auto";
     videoNode.muted = true;
     previewCache[idx] = videoNode;
+
   } else {
     const img = new Image();
     img.src = url.replace('/upload/', '/upload/f_auto,q_auto,w_800/');
@@ -399,6 +379,7 @@ function renderItem(r, idx) {
   gallery.appendChild(div);
 }
 
+// Renderización paginada
 function renderNextPage() {
   const next = resources.slice(index, index + PAGE_SIZE);
   next.forEach((r,i)=>renderItem(r, index+i));
@@ -411,6 +392,7 @@ window.addEventListener('scroll', () => {
   }
 });
 
+// ===== Fetch de recursos =====
 async function fetchResources() {
   loading.style.display = 'block';
   gallery.innerHTML = '';
@@ -434,6 +416,7 @@ async function fetchResources() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// ===== Subida de archivos con barra funcional =====
 addButton.onclick = () => fileInput.click();
 
 fileInput.onchange = async (e)=>{
@@ -446,6 +429,7 @@ fileInput.onchange = async (e)=>{
   }
 
   window.scrollTo({ top: 0, behavior: 'auto' });
+
   loading.style.display = 'block';
   progressContainer.style.display = 'block';
   progressBar.style.width = '0%';
@@ -466,7 +450,7 @@ fileInput.onchange = async (e)=>{
 
     gallery.innerHTML='';
     index=0;
-    previewCache = [];
+    previewCache = []; // limpiar cache antes de re-render
     renderNextPage();
     footerInfo.textContent = `Recursos: ${resources.length}`;
 
@@ -474,7 +458,7 @@ fileInput.onchange = async (e)=>{
     progressContainer.style.display = 'none';
     fileInput.value='';
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, 50);
+  }, 50); // delay mínimo para cerrar galería
 };
 
 fetchResources();
